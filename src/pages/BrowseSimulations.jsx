@@ -36,9 +36,15 @@ const BrowseSimulations = () => {
   };
 
   const getSimulationPath = (sim) => {
+    // HTML simulations (new free-form AI generated)
+    if (sim.isHTMLSimulation) {
+      return `/simulation/html/${sim.id}`;
+    }
+    // Legacy AI-generated simulations (JSON-based)
     if (sim.isAIGenerated) {
       return `/simulation/custom/${sim.id}`;
     }
+    // Default template simulations
     return `/simulation/${sim.type}/${sim.id}`;
   };
 

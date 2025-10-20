@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
-import { analyzePrompt, generateSimulation, regenerateSimulation } from '../services/secureAiService';
+import { generateHTMLSimulation, regenerateHTMLSimulation } from '../services/secureAiService';
 import { saveCustomSimulation } from '../utils/storage';
 
 const AIBuilder = ({ onSimulationCreated }) => {
   const [step, setStep] = useState(1);
   const [userPrompt, setUserPrompt] = useState('');
-  const [analysis, setAnalysis] = useState(null);
   const [generatedSimulation, setGeneratedSimulation] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [regenerationFeedback, setRegenerationFeedback] = useState('');
 
-  const handleAnalyzePrompt = async () => {
+  const handleGenerateSimulation = async () => {
     if (!userPrompt.trim()) {
-      setError('Please enter a prompt to analyze');
+      setError('Please enter a prompt to generate your simulation');
       return;
     }
 
@@ -21,40 +20,34 @@ const AIBuilder = ({ onSimulationCreated }) => {
     setError(null);
 
     try {
-      const analysisResult = await analyzePrompt(userPrompt);
-      setAnalysis(analysisResult);
-      setStep(2);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGenerateSimulation = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const simulation = await generateSimulation(analysis, userPrompt);
+      const simulation = await generateHTMLSimulation(userPrompt);
       setGeneratedSimulation(simulation);
-      setStep(3);
+      setStep(2); // Move to preview/publish step
     } catch (err) {
-      setError(err.message);
+      setError(`Failed to generate simulation: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   const handleRegenerate = async () => {
+    if (!regenerationFeedback.trim()) {
+      setError('Please provide feedback for regeneration');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const simulation = await regenerateSimulation(analysis, userPrompt, regenerationFeedback);
+      const simulation = await regenerateHTMLSimulation(
+        generatedSimulation.htmlContent,
+        regenerationFeedback
+      );
       setGeneratedSimulation(simulation);
+      setRegenerationFeedback('');
     } catch (err) {
-      setError(err.message);
+      setError(`Failed to regenerate simulation: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -64,310 +57,189 @@ const AIBuilder = ({ onSimulationCreated }) => {
     try {
       const savedSimulation = saveCustomSimulation(generatedSimulation);
       onSimulationCreated(savedSimulation);
-      alert('Simulation published successfully!');
+      alert('✅ Simulation published successfully!');
       // Reset form
       setStep(1);
       setUserPrompt('');
-      setAnalysis(null);
       setGeneratedSimulation(null);
       setRegenerationFeedback('');
+      setError(null);
     } catch (err) {
       setError('Failed to publish simulation. Please try again.');
     }
   };
 
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'customer-comments': return '💬';
-      case 'sales-negotiation': return '💼';
-      case 'prioritization': return '📋';
-      case 'team-conflict': return '👥';
-      default: return '🎯';
-    }
+  const handleStartOver = () => {
+    setStep(1);
+    setUserPrompt('');
+    setGeneratedSimulation(null);
+    setRegenerationFeedback('');
+    setError(null);
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-5xl mx-auto">
       {/* Step 1: Prompt Input */}
       {step === 1 && (
-        <div className="bg-white rounded-2xl p-8 shadow-xl border border-slate-200">
+        <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-slate-900 mb-4">
-              AI Simulation Builder
-            </h2>
-            <p className="text-lg text-slate-600">
-              Describe your simulation idea in natural language, and our AI will create a complete, professional simulation for you.
+            <div className="text-6xl mb-4">🤖✨</div>
+            <h2 className="text-3xl font-bold text-slate-900 mb-2">AI Simulation Builder</h2>
+            <p className="text-slate-600 text-lg">
+              Describe your ideal simulation in natural language, and our AI will create it instantly
             </p>
           </div>
 
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-bold text-slate-900 mb-3">
-                Describe Your Simulation Idea
+              <label className="block text-sm font-semibold text-slate-700 mb-3">
+                What simulation would you like to create?
               </label>
               <textarea
                 value={userPrompt}
                 onChange={(e) => setUserPrompt(e.target.value)}
-                placeholder="Example: Create a simulation where a product manager handles a major bug in production and needs to prioritize tasks while managing stakeholder expectations..."
-                rows={6}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                placeholder="Examples:
+• Create a customer service simulation for handling angry customers at an e-commerce company
+• Build a sales negotiation scenario where I'm selling SaaS software to a startup founder
+• Make a product manager prioritization exercise with competing feature requests
+• Design a team conflict resolution simulation between engineering and marketing
+• Create a crisis management simulation for a social media manager handling a PR issue"
+                className="w-full h-48 px-4 py-3 border-2 border-slate-300 rounded-lg focus:border-primary focus:ring focus:ring-primary/20 transition-all resize-none text-slate-800"
+                disabled={loading}
               />
-            </div>
-
-            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-              <h4 className="font-bold text-blue-900 mb-2">💡 Tips for Better Results:</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Include the role (e.g., "product manager", "sales executive")</li>
-                <li>• Describe the situation or challenge</li>
-                <li>• Mention the industry or context if relevant</li>
-                <li>• Be specific about what skills you want to test</li>
-              </ul>
+              <div className="mt-2 text-sm text-slate-500">
+                💡 Tip: Be specific! Mention company types, roles, and exact scenarios for best results.
+              </div>
             </div>
 
             {error && (
-              <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-                <p className="text-red-800">{error}</p>
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                <div className="flex items-center">
+                  <span className="text-red-700 font-medium">⚠️ {error}</span>
+                </div>
               </div>
             )}
 
             <button
-              onClick={handleAnalyzePrompt}
+              onClick={handleGenerateSimulation}
               disabled={loading || !userPrompt.trim()}
-              className={`w-full py-4 text-lg font-semibold text-white rounded-xl transition-all ${
-                loading || !userPrompt.trim()
-                  ? 'bg-slate-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-primary to-accent hover:shadow-2xl transform hover:scale-105'
-              }`}
+              className="w-full px-6 py-4 bg-gradient-to-r from-primary to-accent text-white rounded-lg font-semibold text-lg hover:shadow-lg transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {loading ? (
                 <span className="flex items-center justify-center">
                   <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Analyzing your prompt...
+                  Generating Your Simulation with AI...
                 </span>
               ) : (
-                '✨ Analyze & Generate Simulation'
+                '🚀 Generate Simulation with AI'
               )}
             </button>
           </div>
         </div>
       )}
 
-      {/* Step 2: Analysis Review */}
-      {step === 2 && analysis && (
-        <div className="bg-white rounded-2xl p-8 shadow-xl border border-slate-200">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-slate-900">Analysis Results</h2>
-            <button
-              onClick={() => setStep(1)}
-              className="text-slate-600 hover:text-slate-800"
-            >
-              ← Back to Edit
-            </button>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6 mb-6">
-            <div className="space-y-4">
-              <div>
-                <div className="text-sm font-semibold text-slate-600 mb-1">Interaction Type</div>
-                <div className="flex items-center">
-                  <span className="text-2xl mr-2">🤖</span>
-                  <span className="font-bold text-slate-900 capitalize">
-                    {analysis.interactionType?.replace('-', ' ') || 'Custom'}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <div className="text-sm font-semibold text-slate-600 mb-1">Role</div>
-                <div className="font-bold text-slate-900">{analysis.role}</div>
-              </div>
-
-              <div>
-                <div className="text-sm font-semibold text-slate-600 mb-1">Category</div>
-                <div className="font-bold text-slate-900">{analysis.category}</div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <div className="text-sm font-semibold text-slate-600 mb-1">Difficulty</div>
-                <div className="font-bold text-slate-900">{analysis.difficulty}</div>
-              </div>
-
-              <div>
-                <div className="text-sm font-semibold text-slate-600 mb-1">Duration</div>
-                <div className="font-bold text-slate-900">{analysis.duration}</div>
-              </div>
-
-              <div>
-                <div className="text-sm font-semibold text-slate-600 mb-1">Title</div>
-                <div className="font-bold text-slate-900">{analysis.title}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <div className="text-sm font-semibold text-slate-600 mb-2">Context</div>
-            <div className="text-slate-700 bg-slate-50 rounded-lg p-4">
-              {analysis.context}
-            </div>
-          </div>
-
-          {analysis.learningObjectives && analysis.learningObjectives.length > 0 && (
-            <div className="mb-6">
-              <div className="text-sm font-semibold text-slate-600 mb-2">Learning Objectives</div>
-              <ul className="space-y-1">
-                {analysis.learningObjectives.map((objective, index) => (
-                  <li key={index} className="text-slate-700 flex items-start">
-                    <span className="text-green-500 mr-2">•</span>
-                    {objective}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {analysis.skillsTested && analysis.skillsTested.length > 0 && (
-            <div className="mb-6">
-              <div className="text-sm font-semibold text-slate-600 mb-2">Skills Tested</div>
-              <div className="flex flex-wrap gap-2">
-                {analysis.skillsTested.map((skill, index) => (
-                  <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex gap-4">
-            <button
-              onClick={handleGenerateSimulation}
-              disabled={loading}
-              className={`flex-1 py-3 font-semibold text-white rounded-lg transition-all ${
-                loading
-                  ? 'bg-slate-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-primary to-accent hover:shadow-lg'
-              }`}
-            >
-              {loading ? 'Generating...' : '🚀 Generate Simulation'}
-            </button>
-            <button
-              onClick={() => setStep(1)}
-              className="px-6 py-3 font-semibold text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-all"
-            >
-              Edit Prompt
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 3: Generated Simulation Preview */}
-      {step === 3 && generatedSimulation && (
+      {/* Step 2: Preview & Publish */}
+      {step === 2 && generatedSimulation && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl p-8 shadow-xl border border-slate-200">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-slate-900">Generated Simulation</h2>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setStep(2)}
-                  className="text-slate-600 hover:text-slate-800"
-                >
-                  ← Back to Analysis
-                </button>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <div className="text-sm font-semibold text-slate-600 mb-1">Title</div>
-                <div className="font-bold text-slate-900 text-lg">{generatedSimulation.title}</div>
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-slate-600 mb-1">Type</div>
-                <div className="flex items-center">
-                  <span className="text-2xl mr-2">🤖</span>
-                  <span className="font-bold text-slate-900 capitalize">
-                    {generatedSimulation.interactionType?.replace('-', ' ') || 'AI Generated'}
+          {/* Simulation Info Card */}
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                  {generatedSimulation.title}
+                </h2>
+                <p className="text-slate-600 mb-4">{generatedSimulation.description}</p>
+                
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
+                    {generatedSimulation.category}
+                  </span>
+                  <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                    {generatedSimulation.difficulty}
+                  </span>
+                  <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                    ⏱️ {generatedSimulation.duration}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-slate-50 rounded-lg p-4 mb-6">
-              <div className="text-sm font-semibold text-slate-600 mb-2">Scenario Preview</div>
-              <pre className="text-sm text-slate-700 whitespace-pre-wrap">
-                {JSON.stringify(generatedSimulation.scenario, null, 2)}
-              </pre>
-            </div>
-
-            <div className="flex gap-4">
-              <button
-                onClick={handlePublish}
-                className="flex-1 py-3 font-semibold text-white bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg hover:shadow-lg transition-all"
-              >
-                🚀 Publish Simulation
-              </button>
-              <button
-                onClick={() => setStep(4)}
-                className="px-6 py-3 font-semibold text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-all"
-              >
-                Regenerate
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Step 4: Regeneration */}
-      {step === 4 && (
-        <div className="bg-white rounded-2xl p-8 shadow-xl border border-slate-200">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-slate-900">Regenerate Simulation</h2>
-            <button
-              onClick={() => setStep(3)}
-              className="text-slate-600 hover:text-slate-800"
-            >
-              ← Back to Preview
-            </button>
+            {generatedSimulation.learningObjectives && (
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <h3 className="text-sm font-semibold text-slate-700 mb-2">Learning Objectives:</h3>
+                <ul className="list-disc list-inside text-sm text-slate-600 space-y-1">
+                  {generatedSimulation.learningObjectives.map((obj, index) => (
+                    <li key={index}>{obj}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-bold text-slate-900 mb-2">
-                What would you like to change? (Optional)
-              </label>
-              <textarea
-                value={regenerationFeedback}
-                onChange={(e) => setRegenerationFeedback(e.target.value)}
-                placeholder="Example: Make it more challenging, focus on technical skills, add more realistic details..."
-                rows={4}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          {/* Simulation Preview */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div className="bg-slate-50 px-6 py-3 border-b border-slate-200">
+              <h3 className="font-semibold text-slate-800">Simulation Preview</h3>
+            </div>
+            <div className="p-4">
+              <iframe
+                srcDoc={generatedSimulation.htmlContent}
+                title="Simulation Preview"
+                className="w-full border border-slate-200 rounded-lg"
+                style={{ minHeight: '600px' }}
+                sandbox="allow-scripts allow-same-origin allow-forms"
               />
             </div>
+          </div>
 
-            <div className="flex gap-4">
+          {/* Regeneration Section */}
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h3 className="font-semibold text-slate-800 mb-3">Want to improve it?</h3>
+            <p className="text-sm text-slate-600 mb-4">
+              Provide feedback and the AI will regenerate the simulation with improvements.
+            </p>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={regenerationFeedback}
+                onChange={(e) => setRegenerationFeedback(e.target.value)}
+                placeholder="e.g., Make it more challenging, Add more specific metrics, Include time pressure..."
+                className="flex-1 px-4 py-2 border-2 border-slate-300 rounded-lg focus:border-primary focus:ring focus:ring-primary/20"
+                disabled={loading}
+              />
               <button
                 onClick={handleRegenerate}
-                disabled={loading}
-                className={`flex-1 py-3 font-semibold text-white rounded-lg transition-all ${
-                  loading
-                    ? 'bg-slate-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-primary to-accent hover:shadow-lg'
-                }`}
+                disabled={loading || !regenerationFeedback.trim()}
+                className="px-6 py-2 bg-slate-600 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Regenerating...' : '🔄 Regenerate Simulation'}
-              </button>
-              <button
-                onClick={() => setStep(3)}
-                className="px-6 py-3 font-semibold text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-all"
-              >
-                Cancel
+                {loading ? 'Regenerating...' : '🔄 Regenerate'}
               </button>
             </div>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+              <div className="text-red-700 font-medium">⚠️ {error}</div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-4">
+            <button
+              onClick={handleStartOver}
+              className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-300 transition-colors"
+            >
+              ← Start Over
+            </button>
+            <button
+              onClick={handlePublish}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-semibold hover:shadow-lg transform hover:-translate-y-0.5 transition-all"
+            >
+              ✅ Publish Simulation
+            </button>
           </div>
         </div>
       )}
