@@ -9,7 +9,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center">
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-slate-900 tracking-tight mb-6">
-              Practice Real Work,
+              Practice Real Work
               <br />
               <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Master Real Skills

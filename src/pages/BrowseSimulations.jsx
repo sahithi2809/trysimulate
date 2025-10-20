@@ -36,11 +36,17 @@ const BrowseSimulations = () => {
   };
 
   const getSimulationPath = (sim) => {
+    if (sim.isAIGenerated) {
+      return `/simulation/custom/${sim.id}`;
+    }
     return `/simulation/${sim.type}/${sim.id}`;
   };
 
-  const getTypeIcon = (type) => {
-    switch (type) {
+  const getTypeIcon = (sim) => {
+    if (sim.isAIGenerated) {
+      return '🤖';
+    }
+    switch (sim.type) {
       case 'customer-comments':
         return '💬';
       case 'sales-negotiation':
@@ -126,7 +132,7 @@ const BrowseSimulations = () => {
             >
               {/* Icon & Category */}
               <div className="flex justify-between items-start mb-4">
-                <div className="text-4xl">{getTypeIcon(sim.type)}</div>
+                <div className="text-4xl">{getTypeIcon(sim)}</div>
                 <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
                   {sim.category}
                 </span>

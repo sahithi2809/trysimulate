@@ -9,6 +9,7 @@ import CustomerCommentsSimulation from './pages/simulations/CustomerCommentsSimu
 import SalesNegotiationSimulation from './pages/simulations/SalesNegotiationSimulation';
 import PrioritizationSimulation from './pages/simulations/PrioritizationSimulation';
 import TeamConflictSimulation from './pages/simulations/TeamConflictSimulation';
+import UniversalSimulationRenderer from './components/UniversalSimulationRenderer';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <Route path="/simulation/sales-negotiation/:id" element={<SalesNegotiationSimulation />} />
           <Route path="/simulation/prioritization/:id" element={<PrioritizationSimulation />} />
           <Route path="/simulation/team-conflict/:id" element={<TeamConflictSimulation />} />
+          <Route path="/simulation/custom/:id" element={<UniversalSimulationRenderer />} />
         </Routes>
       </div>
     </Router>

@@ -11,12 +11,15 @@ const CustomerCommentsSimulation = () => {
   const [currentReply, setCurrentReply] = useState('');
   const [scores, setScores] = useState({});
   const [showResults, setShowResults] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const sim = getSimulationById(id);
+    setLoading(false);
+    
     if (sim && sim.type === 'customer-comments') {
       setSimulation(sim);
-      if (sim.scenario.comments.length > 0) {
+      if (sim.scenario && sim.scenario.comments && sim.scenario.comments.length > 0) {
         setSelectedCommentId(sim.scenario.comments[0].id);
       }
     } else {
@@ -66,8 +69,8 @@ const CustomerCommentsSimulation = () => {
     setCurrentReply('');
 
     // Move to next comment if available
-    const currentIndex = simulation.scenario.comments.findIndex((c) => c.id === selectedCommentId);
-    if (currentIndex < simulation.scenario.comments.length - 1) {
+    const currentIndex = simulation?.scenario?.comments?.findIndex((c) => c.id === selectedCommentId);
+    if (currentIndex !== undefined && currentIndex < simulation.scenario.comments.length - 1) {
       setSelectedCommentId(simulation.scenario.comments[currentIndex + 1].id);
     }
   };
@@ -79,13 +82,29 @@ const CustomerCommentsSimulation = () => {
     setShowResults(true);
   };
 
-  const selectedComment = simulation?.scenario.comments.find((c) => c.id === selectedCommentId);
-  const allReplied = simulation?.scenario.comments.every((c) => replies[c.id]);
+  const selectedComment = simulation?.scenario?.comments?.find((c) => c.id === selectedCommentId);
+  const allReplied = simulation?.scenario?.comments?.every((c) => replies[c.id]);
 
-  if (!simulation) {
+  if (loading || !simulation) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg text-slate-600">Loading...</div>
+        <div className="text-lg text-slate-600">Loading simulation...</div>
+      </div>
+    );
+  }
+
+  if (!simulation.scenario || !simulation.scenario.comments) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg text-red-600 mb-4">Simulation data is incomplete</div>
+          <button
+            onClick={() => navigate('/browse')}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-accent"
+          >
+            Back to Browse
+          </button>
+        </div>
       </div>
     );
   }
@@ -114,7 +133,7 @@ const CustomerCommentsSimulation = () => {
             {/* Per-Comment Breakdown */}
             <div className="space-y-6 mb-8">
               <h3 className="text-xl font-bold text-slate-900">Per-Comment Feedback</h3>
-              {simulation.scenario.comments.map((comment) => {
+              {simulation?.scenario?.comments?.map((comment) => {
                 const score = scores[comment.id];
                 if (!score) return null;
 
@@ -187,7 +206,7 @@ const CustomerCommentsSimulation = () => {
           <div className="lg:col-span-3 bg-white rounded-xl p-6 shadow-lg border border-slate-200 h-fit">
             <h3 className="font-bold text-slate-900 mb-4">Customer Comments</h3>
             <div className="space-y-3">
-              {simulation.scenario.comments.map((comment) => (
+              {simulation?.scenario?.comments?.map((comment) => (
                 <div
                   key={comment.id}
                   onClick={() => setSelectedCommentId(comment.id)}
@@ -264,7 +283,7 @@ const CustomerCommentsSimulation = () => {
             <div className="bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg p-4 mb-6 text-center border border-primary/20">
               <div className="text-sm text-slate-600 mb-1">Replies Submitted</div>
               <div className="text-3xl font-bold text-primary">
-                {Object.keys(replies).length}/{simulation.scenario.comments.length}
+                {Object.keys(replies).length}/{simulation?.scenario?.comments?.length || 0}
               </div>
             </div>
 
