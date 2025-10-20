@@ -1,0 +1,10 @@
+# Copy this to .env file in the root of CODEBASE directory
+
+# OpenAI API Key (already hardcoded in aiService.js for production)
+VITE_OPENAI_API_KEY=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
+
+# Supabase Configuration
+# Get these from: https://supabase.com → Your Project → Settings → API
+VITE_SUPABASE_URL=your_supabase_project_url_here
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_public_key_here
+

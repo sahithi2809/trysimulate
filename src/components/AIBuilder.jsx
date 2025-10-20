@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { analyzePrompt, generateSimulation, regenerateSimulation } from '../services/aiService';
+import { analyzePrompt, generateSimulation, regenerateSimulation } from '../services/secureAiService';
 import { saveCustomSimulation } from '../utils/storage';
 
 const AIBuilder = ({ onSimulationCreated }) => {

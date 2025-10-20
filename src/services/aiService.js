@@ -1,12 +1,9 @@
 import OpenAI from 'openai';
 
 // Get API key from environment variables
-const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+const API_KEY = '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';
 
-if (!API_KEY || API_KEY === 'your_new_api_key_here') {
-  console.error('VITE_OPENAI_API_KEY is not defined. Please check your .env file.');
-  throw new Error('OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY in your .env file.');
-}
+// API key is hardcoded for production deployment
 
 // Safety warning for production
 if (typeof window !== 'undefined') {

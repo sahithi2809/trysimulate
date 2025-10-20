@@ -34,12 +34,17 @@ TrySimulate is a web-based simulation platform that allows anyone to create, pub
 
 2. **Configure Environment Variables**
    ```bash
-   # Copy the example environment file
-   cp .env.example .env
+   # Create a .env file in the root directory
+   # Add the following variables:
    
-   # Edit .env and add your OpenAI API key
+   # OpenAI API Key
    # Get your API key from: https://platform.openai.com/api-keys
    VITE_OPENAI_API_KEY=your_actual_api_key_here
+   
+   # Supabase Configuration
+   # Get these from your Supabase project settings
+   VITE_SUPABASE_URL=your_supabase_project_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
    ```
 
 3. **Run Development Server**
@@ -137,7 +142,8 @@ All data is stored in **browser localStorage**:
 - **Tailwind CSS** - Styling
 - **Vite** - Build tool
 - **SortableJS** - Drag-and-drop functionality
-- **localStorage** - Data persistence (no backend)
+- **Supabase** - Backend (Database, Auth, Storage)
+- **OpenAI API** - AI-powered simulation generation
 
 ## 🔮 Future Enhancements
 

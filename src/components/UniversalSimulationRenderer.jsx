@@ -269,25 +269,32 @@ const UniversalSimulationRenderer = () => {
 
   const renderDecisionTree = (interaction) => {
     const getCurrentNodeData = () => {
-      if (currentNode === 'start') {
-        return simulation.decisionTree?.root;
-      }
-      return simulation.decisionTree?.nodes?.find(node => node.id === currentNode);
+      // New structure: decisionTree is an object with node IDs as keys
+      return simulation.decisionTree?.[currentNode];
     };
 
     const handleDecision = (option) => {
-      const newPath = [...decisionPath, { node: currentNode, choice: option.id }];
+      const newPath = [...decisionPath, { 
+        node: currentNode, 
+        choice: option.text,
+        impact: option.impact 
+      }];
       setDecisionPath(newPath);
       
-      if (option.nextNode) {
-        setCurrentNode(option.nextNode);
-      } else {
-        // Reached an ending
-        setIsDecisionTreeComplete(true);
-        const ending = simulation.decisionTree?.endings?.find(end => end.id === option.nextNode);
-        if (ending) {
-          handleResponse('decision-tree', { path: newPath, ending: ending });
+      // Check if the next node exists
+      const nextNode = simulation.decisionTree?.[option.next];
+      
+      if (nextNode) {
+        setCurrentNode(option.next);
+        
+        // Check if it's an ending node
+        if (nextNode.isEnd) {
+          setIsDecisionTreeComplete(true);
+          handleResponse('decision-tree', { path: newPath, ending: nextNode });
         }
+      } else {
+        // If next node doesn't exist, treat as incomplete
+        console.error('Next node not found:', option.next);
       }
     };
 
@@ -300,9 +307,8 @@ const UniversalSimulationRenderer = () => {
     const currentNodeData = getCurrentNodeData();
 
     if (isDecisionTreeComplete) {
-      const ending = simulation.decisionTree?.endings?.find(end => 
-        decisionPath[decisionPath.length - 1]?.choice === end.id
-      );
+      // Get the ending node (current node should be an end node)
+      const ending = simulation.decisionTree?.[currentNode];
       
       return (
         <div className="space-y-4">
@@ -313,20 +319,23 @@ const UniversalSimulationRenderer = () => {
                 <h4 className="font-semibold text-green-800 mb-2">Your Path:</h4>
                 <div className="space-y-2">
                   {decisionPath.map((step, index) => (
-                    <div key={index} className="text-sm text-green-700">
-                      Step {index + 1}: {step.choice}
+                    <div key={index} className="text-sm bg-white rounded p-3 border border-green-200">
+                      <div className="font-medium text-green-900">Step {index + 1}: {step.choice}</div>
+                      {step.impact && <div className="text-xs text-green-700 mt-1">→ {step.impact}</div>}
                     </div>
                   ))}
                 </div>
               </div>
               
               {ending && (
-                <div>
-                  <h4 className="font-semibold text-green-800 mb-2">Final Outcome:</h4>
-                  <p className="text-green-700 mb-2">{ending.outcome}</p>
-                  <div className="text-lg font-bold text-green-600">
-                    Score: {ending.score}/100
-                  </div>
+                <div className="bg-white rounded-lg p-4 border border-green-200">
+                  <h4 className="font-semibold text-green-800 mb-2">Final Outcome: {ending.outcome}</h4>
+                  <p className="text-green-700 mb-3">{ending.description}</p>
+                  {ending.feedback && (
+                    <div className="text-sm text-green-600 bg-green-50 p-3 rounded">
+                      <strong>Feedback:</strong> {ending.feedback}
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -347,7 +356,14 @@ const UniversalSimulationRenderer = () => {
         <div className="space-y-4">
           <div className="bg-red-50 rounded-lg p-6 border border-red-200">
             <h3 className="font-bold text-red-900 mb-4">Error</h3>
-            <p className="text-red-700">Decision tree data is incomplete.</p>
+            <p className="text-red-700 mb-2">Decision tree data is incomplete.</p>
+            <p className="text-sm text-red-600">Current node "{currentNode}" not found in decision tree.</p>
+            <button
+              onClick={resetTree}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              Reset Tree
+            </button>
           </div>
         </div>
       );
@@ -357,16 +373,18 @@ const UniversalSimulationRenderer = () => {
       <div className="space-y-4">
         <div className="bg-slate-50 rounded-lg p-6 border border-slate-200">
           <h3 className="font-bold text-slate-900 mb-4">Decision Point {decisionPath.length + 1}</h3>
-          <p className="text-slate-700 mb-6">{currentNodeData.situation}</p>
+          <p className="text-slate-700 mb-2">{currentNodeData.description}</p>
+          <p className="text-lg font-semibold text-slate-900 mb-6">{currentNodeData.question}</p>
           
           <div className="space-y-3">
-            {currentNodeData.options?.map((option) => (
+            {currentNodeData.options?.map((option, index) => (
               <button
-                key={option.id}
+                key={index}
                 onClick={() => handleDecision(option)}
                 className="w-full text-left p-4 rounded-lg border-2 border-slate-200 hover:border-primary hover:bg-primary/5 transition-all"
               >
                 <div className="font-medium text-slate-900 mb-2">{option.text}</div>
+                {option.impact && <div className="text-sm text-slate-600">→ {option.impact}</div>}
                 {option.consequences && (
                   <div className="text-sm text-slate-600">{option.consequences}</div>
                 )}
@@ -854,20 +872,36 @@ const UniversalSimulationRenderer = () => {
   };
 
   const canProceed = () => {
+    const currentInteraction = getCurrentInteraction();
+    const response = responses[currentInteraction?.id];
+    const hasValidResponse = response && response.trim().length > 0;
+    
+    // Debug logging
+    console.log('canProceed debug:', {
+      interactionType: simulation.interactionType,
+      currentStep,
+      currentInteraction: currentInteraction?.id,
+      hasResponse: !!response,
+      responseLength: response?.length || 0,
+      hasValidResponse,
+      responseValue: response,
+      responses
+    });
+    
     switch (simulation.interactionType) {
       case 'decision-tree':
       case 'drag-drop':
         return false; // These handle their own completion
       case 'multiple-choice':
-        return responses[currentInteraction?.id];
+        return !!response; // Any selection is valid
       case 'scenario-based':
-        return responses[currentInteraction?.id];
+        return !!response; // Any selection is valid
       case 'text-input':
-        return responses[currentInteraction?.id];
+        return hasValidResponse; // Must have actual text content
       case 'role-play':
         return true; // Role play handles its own validation
       default:
-        return responses[currentInteraction?.id];
+        return hasValidResponse; // Default to requiring actual content
     }
   };
 
