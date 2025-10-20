@@ -32,12 +32,22 @@ TrySimulate is a web-based simulation platform that allows anyone to create, pub
    npm install
    ```
 
-2. **Run Development Server**
+2. **Configure Environment Variables**
+   ```bash
+   # Copy the example environment file
+   cp .env.example .env
+   
+   # Edit .env and add your OpenAI API key
+   # Get your API key from: https://platform.openai.com/api-keys
+   VITE_OPENAI_API_KEY=your_actual_api_key_here
+   ```
+
+3. **Run Development Server**
    ```bash
    npm run dev
    ```
 
-3. **Open Browser**
+4. **Open Browser**
    Navigate to `http://localhost:3000`
 
 ## 🏗️ Build for Production

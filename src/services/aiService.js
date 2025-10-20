@@ -1,7 +1,17 @@
 import OpenAI from 'openai';
 
-// For production, this should be moved to a backend service
-const API_KEY = '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';
+// Get API key from environment variables
+const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+
+if (!API_KEY || API_KEY === 'your_new_api_key_here') {
+  console.error('VITE_OPENAI_API_KEY is not defined. Please check your .env file.');
+  throw new Error('OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY in your .env file.');
+}
+
+// Safety warning for production
+if (typeof window !== 'undefined') {
+  console.warn('⚠️ WARNING: This is a demo deployment with exposed API key. For production, use a backend proxy.');
+}
 
 const openai = new OpenAI({
   apiKey: API_KEY,
