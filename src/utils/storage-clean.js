@@ -48,66 +48,68 @@ export const getDefaultSimulations = () => {
       scenario: {
         role: 'Sales Executive',
         context: 'You pitched a collaboration SaaS to an early-stage startup. After the demo, the buyer requests a 30% discount.',
-        email: {
-          from: 'Rahul — Head of Ops, AcmeStartup',
-          subject: 'Re: Demo Follow-up',
-          body: 'Thanks for the demo — product looks useful. However, your quoted annual price is above our budget. Can you do a 30% discount for our startup? If not, we may need to consider other options.',
-        },
-        rubric: {
-          empathy: 25,
-          value: 30,
-          alternatives: 30,
-          closing: 15,
-        },
+        situation: 'The startup loves the product but claims budget constraints. They want 30% off the annual plan.',
+        objectives: ['Close the deal', 'Protect pricing integrity', 'Build long-term relationship'],
+        constraints: ['Company policy limits discounts to 15%', 'Competitor offers 20% off', 'Startup has 50 employees'],
       },
     },
     {
       id: 'default-prioritization-1',
-      title: 'Task Prioritization — A Busy PM\'s Day',
+      title: 'Product Roadmap Prioritization — E-commerce Platform',
       type: 'prioritization',
       category: 'Product Management',
-      description: 'Reorder 10 tasks by priority under time pressure.',
+      description: 'Prioritize features for an e-commerce platform with limited resources.',
       difficulty: 'Intermediate',
-      duration: '12 min',
+      duration: '20 min',
       created: '2025-01-13',
       isDefault: true,
       scenario: {
         role: 'Product Manager',
-        context: 'You have 10 tasks competing for attention. Prioritize them correctly.',
-        tasks: [
-          { id: 1, title: 'Reply to CEO email about release go/no-go', est_time: 10, ideal_rank: 1, note: 'High business impact; time-sensitive (CEO asked for update)' },
-          { id: 2, title: 'Review high-severity customer bug & assign triage', est_time: 20, ideal_rank: 2, note: 'Customer-visible; may require hotfix' },
-          { id: 3, title: 'Attend company Town Hall (mandatory)', est_time: 60, ideal_rank: 3, note: 'Fixed time — must attend' },
-          { id: 4, title: 'Schedule requirements-gathering call for PI planning', est_time: 10, ideal_rank: 4, note: 'Enables PI planning; schedule soon' },
-          { id: 5, title: 'Approve marketing campaign copy launching tomorrow', est_time: 15, ideal_rank: 5, note: 'Deadline-bound; blocks publish' },
-          { id: 6, title: 'Update roadmap slide and share with stakeholders', est_time: 30, ideal_rank: 6, note: 'Important for alignment' },
-          { id: 7, title: 'One-on-one with direct report (scheduled)', est_time: 30, ideal_rank: 7, note: 'People management; scheduled' },
-          { id: 8, title: 'Respond to vendor on contract renewal/pricing', est_time: 20, ideal_rank: 8, note: 'Renewal in 7 days; can delegate if needed' },
-          { id: 9, title: 'Review analytics dashboard for KPI anomalies', est_time: 25, ideal_rank: 9, note: 'Monitor for anomalies; lower unless issue found' },
-          { id: 10, title: 'Prepare optional cross-vertical demo (can skip)', est_time: 45, ideal_rank: 10, note: 'Optional; postpone if busy' },
+        context: 'You manage an e-commerce platform. Your team can only build 3 features this quarter.',
+        features: [
+          { id: 1, name: 'Advanced Search Filters', impact: 'High', effort: 'Medium', users: 12000 },
+          { id: 2, name: 'Mobile App Push Notifications', impact: 'High', effort: 'Low', users: 15000 },
+          { id: 3, name: 'AI Product Recommendations', impact: 'Very High', effort: 'High', users: 8000 },
+          { id: 4, name: 'Social Media Integration', impact: 'Medium', effort: 'Low', users: 5000 },
+          { id: 5, name: 'Advanced Analytics Dashboard', impact: 'Medium', effort: 'High', users: 2000 },
+          { id: 6, name: 'One-Click Checkout', impact: 'Very High', effort: 'Medium', users: 18000 },
         ],
       },
     },
     {
       id: 'default-team-conflict-1',
-      title: 'Team Conflict — Engineering vs Design Disagreement',
+      title: 'Team Conflict Resolution — Design vs Engineering',
       type: 'team-conflict',
       category: 'Leadership',
-      description: 'Resolve a heated Slack discussion between team members.',
+      description: 'Resolve a conflict between design and engineering teams over project scope.',
       difficulty: 'Advanced',
-      duration: '20 min',
+      duration: '25 min',
       created: '2025-01-12',
       isDefault: true,
       scenario: {
-        role: 'Project Manager / Team Lead',
-        context: 'Two team members are in conflict over a design decision in the team Slack channel.',
-        messages: [
-          { id: 1, user: 'Sarah (Designer)', avatar: 'S', text: 'We need to stick with the original design. We user-tested it for 2 weeks.', time: '10:23 AM' },
+        role: 'Engineering Manager',
+        context: 'Your design and engineering teams are in conflict over a new feature implementation.',
+        situation: 'Design wants a complex, beautiful interface. Engineering says it will take too long to build.',
+        participants: [
+          { id: 1, user: 'Sarah (Designer)', avatar: 'S', text: 'This design will increase user engagement by 40%. We need to build it exactly as specified.', time: '10:20 AM' },
           { id: 2, user: 'Dev (Engineer)', avatar: 'D', text: 'The original design will take 3 extra weeks to build. We don\'t have that time.', time: '10:25 AM' },
           { id: 3, user: 'Sarah (Designer)', avatar: 'S', text: 'So we\'re just ignoring user research now? This is exactly what happened last quarter.', time: '10:27 AM' },
           { id: 4, user: 'Dev (Engineer)', avatar: 'D', text: 'I\'m not ignoring research. I\'m being realistic about our sprint capacity.', time: '10:28 AM' },
         ],
       },
+    },
+    {
+      id: 'default-amason-sales-1',
+      title: 'The First 90 Days at Amason — Sales Manager Simulation',
+      type: 'amason-sales',
+      category: 'Sales',
+      description: 'Play as Riya Mehta, a new Sales Manager at Amason. Build your sales pipeline by selecting and prioritizing leads.',
+      difficulty: 'Intermediate',
+      duration: '15 min',
+      created: '2025-01-20',
+      isDefault: true,
+      isHTMLSimulation: true,
+      htmlContent: '', // Will be loaded from file
     },
   ];
 };
@@ -154,13 +156,6 @@ export const getProgress = (simulationId) => {
   const stored = localStorage.getItem(STORAGE_KEYS.USER_PROGRESS);
   const allProgress = stored ? JSON.parse(stored) : {};
   return allProgress[simulationId] || null;
-};
-
-// Delete custom simulation
-export const deleteCustomSimulation = (id) => {
-  const custom = getCustomSimulations();
-  const filtered = custom.filter((sim) => sim.id !== id);
-  localStorage.setItem(STORAGE_KEYS.CUSTOM_SIMULATIONS, JSON.stringify(filtered));
 };
 
 // Clear all data (for testing)

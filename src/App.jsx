@@ -11,6 +11,7 @@ import PrioritizationSimulation from './pages/simulations/PrioritizationSimulati
 import TeamConflictSimulation from './pages/simulations/TeamConflictSimulation';
 import UniversalSimulationRenderer from './components/UniversalSimulationRenderer';
 import HTMLSimulationRenderer from './components/HTMLSimulationRenderer';
+import UniversalHTMLSimulationRenderer from './components/UniversalHTMLSimulationRenderer';
 
 function App() {
   return (
@@ -27,7 +28,7 @@ function App() {
           <Route path="/simulation/prioritization/:id" element={<PrioritizationSimulation />} />
           <Route path="/simulation/team-conflict/:id" element={<TeamConflictSimulation />} />
           <Route path="/simulation/custom/:id" element={<UniversalSimulationRenderer />} />
-          <Route path="/simulation/html/:id" element={<HTMLSimulationRenderer />} />
+          <Route path="/simulation/html/:id" element={<UniversalHTMLSimulationRenderer />} />
         </Routes>
       </div>
     </Router>

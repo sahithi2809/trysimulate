@@ -1,14 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getAllSimulations } from '../utils/storage';
+import { databaseService } from '../services/databaseService';
 
 const BrowseSimulations = () => {
   const [simulations, setSimulations] = useState([]);
   const [filter, setFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    setSimulations(getAllSimulations());
+    const loadSimulations = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        console.log('🔍 Loading simulations from database...');
+        
+        // Try to load from database first
+        const dbSimulations = await databaseService.getAllSimulations();
+        console.log('✅ Loaded simulations from database:', dbSimulations.length);
+        
+        // Get fallback simulations from localStorage
+        const fallbackSimulations = getAllSimulations();
+        console.log('📦 Fallback simulations available:', fallbackSimulations.length);
+        
+        // Combine database simulations with fallback simulations
+        // Database simulations take priority, fallback provides defaults
+        const allSimulations = [...dbSimulations, ...fallbackSimulations];
+        
+        setSimulations(allSimulations);
+        
+      } catch (err) {
+        console.error('❌ Error loading from database, using fallback:', err);
+        
+        // Fallback to localStorage if database fails
+        const fallbackSimulations = getAllSimulations();
+        setSimulations(fallbackSimulations);
+        setError('Using offline simulations. Database connection failed.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSimulations();
   }, []);
 
   const categories = ['All', 'Product Management', 'Sales', 'Leadership', 'Marketing', 'HR'];
@@ -36,22 +72,32 @@ const BrowseSimulations = () => {
   };
 
   const getSimulationPath = (sim) => {
-    // HTML simulations (new free-form AI generated)
+    // Database simulations (AI-generated) - use universal HTML renderer
+    if (sim.is_ai_generated) {
+      return `/simulation/html/${sim.id}`;
+    }
+    // HTML simulations (new free-form AI generated from localStorage)
     if (sim.isHTMLSimulation) {
       return `/simulation/html/${sim.id}`;
     }
-    // Legacy AI-generated simulations (JSON-based)
+    // Legacy AI-generated simulations (JSON-based from localStorage)
     if (sim.isAIGenerated) {
       return `/simulation/custom/${sim.id}`;
     }
-    // Default template simulations
+    // Default template simulations (fallback)
     return `/simulation/${sim.type}/${sim.id}`;
   };
 
   const getTypeIcon = (sim) => {
+    // Database AI-generated simulations
+    if (sim.is_ai_generated) {
+      return '🤖';
+    }
+    // localStorage AI-generated simulations
     if (sim.isAIGenerated) {
       return '🤖';
     }
+    // Template simulations
     switch (sim.type) {
       case 'customer-comments':
         return '💬';
@@ -66,9 +112,35 @@ const BrowseSimulations = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="text-lg text-slate-600">Loading simulations...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
+        {/* Error message if database failed */}
+        {error && (
+          <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.725-1.36 3.49 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div className="mb-10">
           <h1 className="text-4xl font-bold text-slate-900 mb-4">

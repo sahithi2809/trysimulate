@@ -7,13 +7,32 @@ const HTMLSimulationRenderer = () => {
   const navigate = useNavigate();
   const [simulation, setSimulation] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [htmlContent, setHtmlContent] = useState('');
 
   useEffect(() => {
     const sim = getSimulationById(id);
-    setLoading(false);
     
     if (sim && sim.isHTMLSimulation) {
       setSimulation(sim);
+      
+      // Load HTML content from file for Amason simulation
+      if (sim.type === 'amason-sales') {
+        fetch('/simulations/amason-simulation.html')
+          .then(response => response.text())
+          .then(html => {
+            setHtmlContent(html);
+            setLoading(false);
+          })
+          .catch(err => {
+            console.error('Failed to load HTML simulation:', err);
+            setLoading(false);
+          });
+      } else if (sim.htmlContent) {
+        setHtmlContent(sim.htmlContent);
+        setLoading(false);
+      } else {
+        setLoading(false);
+      }
     } else {
       alert('HTML Simulation not found');
       navigate('/browse');
@@ -31,7 +50,7 @@ const HTMLSimulationRenderer = () => {
     );
   }
 
-  if (!simulation.htmlContent) {
+  if (!htmlContent) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
@@ -78,7 +97,7 @@ const HTMLSimulationRenderer = () => {
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Render the HTML content in an iframe for isolation and security */}
           <iframe
-            srcDoc={simulation.htmlContent}
+            srcDoc={htmlContent}
             title={simulation.title}
             className="w-full border-0"
             style={{ minHeight: '800px', height: '100vh' }}
