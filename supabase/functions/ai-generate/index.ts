@@ -1,5 +1,5 @@
-// Supabase Edge Function to securely call OpenAI API
-// Generates free-form HTML simulations using GPT-4-turbo-preview
+// Supabase Edge Function to securely call Google Gemini API
+// Generates free-form HTML simulations using Gemini 2.5 Pro
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -32,11 +32,11 @@ serve(async (req) => {
 
     console.log('📡 Supabase client created')
 
-    // Fetch OpenAI API key from secrets table
+    // Fetch Gemini API key from secrets table
     const { data: secretData, error: secretError } = await supabaseAdmin
       .from('secrets')
       .select('key_value')
-      .eq('key_name', 'OPENAI_API_KEY')
+      .eq('key_name', 'GEMINI_API_KEY')
       .eq('is_active', true)
       .single()
 
@@ -45,14 +45,14 @@ serve(async (req) => {
       throw new Error('Failed to fetch API key from secrets table')
     }
 
-    const openaiApiKey = secretData.key_value
-    console.log('🔑 API key fetched successfully')
+    const geminiApiKey = secretData.key_value
+    console.log('🔑 Gemini API key fetched successfully')
 
     // Update last_used_at
     await supabaseAdmin
       .from('secrets')
       .update({ last_used_at: new Date().toISOString() })
-      .eq('key_name', 'OPENAI_API_KEY')
+      .eq('key_name', 'GEMINI_API_KEY')
 
     // Parse request body
     const requestBody = await req.json()
@@ -70,14 +70,14 @@ serve(async (req) => {
         if (!payload?.userPrompt) {
           throw new Error('Missing userPrompt in payload')
         }
-        result = await generateHTMLSimulation(openaiApiKey, payload.userPrompt)
+        result = await generateHTMLSimulation(geminiApiKey, payload.userPrompt)
         break
       
       case 'regenerateHTMLSimulation':
         if (!payload?.currentHTML || !payload?.feedback) {
           throw new Error('Missing currentHTML or feedback in payload')
         }
-        result = await regenerateHTMLSimulation(openaiApiKey, payload.currentHTML, payload.feedback)
+        result = await regenerateHTMLSimulation(geminiApiKey, payload.currentHTML, payload.feedback)
         break
       
       // Legacy support for old flow
@@ -87,7 +87,7 @@ serve(async (req) => {
         if (!prompt) {
           throw new Error('Missing userPrompt or originalPrompt in payload')
         }
-        result = await generateHTMLSimulation(openaiApiKey, prompt)
+        result = await generateHTMLSimulation(geminiApiKey, prompt)
         break
       
       default:
@@ -202,34 +202,33 @@ EXAMPLES OF EXCELLENCE:
 Make it SPECIFIC to the request. Use REAL company/product names. Create something that feels valuable and realistic!
   `
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { 
-          role: 'system', 
-          content: 'You are an expert at creating realistic, interactive HTML workplace simulations. Always respond with valid JSON containing metadata and htmlContent fields.' 
-        },
-        { role: 'user', content: simulationPrompt }
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.9,
-      max_tokens: 4000,
+      contents: [{
+        parts: [{
+          text: simulationPrompt
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.9,
+        maxOutputTokens: 8192,
+        responseMimeType: "application/json"
+      }
     }),
   })
 
   if (!response.ok) {
     const error = await response.text()
-    throw new Error(`OpenAI API error: ${error}`)
+    throw new Error(`Gemini API error: ${error}`)
   }
 
   const data = await response.json()
-  const result = JSON.parse(data.choices[0].message.content)
+  const responseText = data.candidates[0].content.parts[0].text
+  const result = JSON.parse(responseText)
   
   // Add system metadata
   return {
@@ -273,34 +272,33 @@ Return a JSON object with:
 }
   `
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { 
-          role: 'system', 
-          content: 'You are an expert at creating realistic, interactive HTML workplace simulations. Always respond with valid JSON.' 
-        },
-        { role: 'user', content: regenerationPrompt }
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.8,
-      max_tokens: 4000,
+      contents: [{
+        parts: [{
+          text: regenerationPrompt
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.8,
+        maxOutputTokens: 8192,
+        responseMimeType: "application/json"
+      }
     }),
   })
 
   if (!response.ok) {
     const error = await response.text()
-    throw new Error(`OpenAI API error: ${error}`)
+    throw new Error(`Gemini API error: ${error}`)
   }
 
   const data = await response.json()
-  const result = JSON.parse(data.choices[0].message.content)
+  const responseText = data.candidates[0].content.parts[0].text
+  const result = JSON.parse(responseText)
   
   return {
     id: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
