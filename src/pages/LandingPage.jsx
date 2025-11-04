@@ -9,15 +9,22 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center">
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-slate-900 tracking-tight mb-6">
-              Practice Real Work
+            Practice Real Scenarios
               <br />
               <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Master Real Skills
+              Assess Real Skills
+              </span>
+              <br />
+              <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              See Real results
               </span>
             </h1>
-            <p className="max-w-2xl mx-auto text-xl text-slate-600 mb-10">
-              The world's first platform to create, share, and experience workplace simulations.
-              Build behavioral intelligence through AI-powered scenarios.
+            <p className="max-w-2xl mx-auto text-xl text-slate-600 mb-4">
+              Learn. Teach. Hire.
+            </p>
+
+            <p className="max-w-2xl mx-auto text-base text-slate-600 mb-10">
+              Build and assess real workplace skills through AI-powered simulations.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link

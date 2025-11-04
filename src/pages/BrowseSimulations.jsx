@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getAllSimulations } from '../utils/storage';
 import { databaseService } from '../services/databaseService';
 
 const BrowseSimulations = () => {
@@ -18,27 +17,16 @@ const BrowseSimulations = () => {
         
         console.log('🔍 Loading simulations from database...');
         
-        // Try to load from database first
+        // Load all published simulations from database
         const dbSimulations = await databaseService.getAllSimulations();
         console.log('✅ Loaded simulations from database:', dbSimulations.length);
         
-        // Get fallback simulations from localStorage
-        const fallbackSimulations = getAllSimulations();
-        console.log('📦 Fallback simulations available:', fallbackSimulations.length);
-        
-        // Combine database simulations with fallback simulations
-        // Database simulations take priority, fallback provides defaults
-        const allSimulations = [...dbSimulations, ...fallbackSimulations];
-        
-        setSimulations(allSimulations);
+        setSimulations(dbSimulations);
         
       } catch (err) {
-        console.error('❌ Error loading from database, using fallback:', err);
-        
-        // Fallback to localStorage if database fails
-        const fallbackSimulations = getAllSimulations();
-        setSimulations(fallbackSimulations);
-        setError('Using offline simulations. Database connection failed.');
+        console.error('❌ Error loading from database:', err);
+        setError('Failed to load simulations. Please refresh the page.');
+        setSimulations([]);
       } finally {
         setLoading(false);
       }
@@ -72,44 +60,32 @@ const BrowseSimulations = () => {
   };
 
   const getSimulationPath = (sim) => {
-    // Database simulations (AI-generated) - use universal HTML renderer
-    if (sim.is_ai_generated) {
+    // All database simulations are HTML-based AI-generated
+    if (sim.is_ai_generated || sim.html_content) {
       return `/simulation/html/${sim.id}`;
     }
-    // HTML simulations (new free-form AI generated from localStorage)
-    if (sim.isHTMLSimulation) {
-      return `/simulation/html/${sim.id}`;
-    }
-    // Legacy AI-generated simulations (JSON-based from localStorage)
-    if (sim.isAIGenerated) {
-      return `/simulation/custom/${sim.id}`;
-    }
-    // Default template simulations (fallback)
-    return `/simulation/${sim.type}/${sim.id}`;
+    // Fallback (shouldn't happen for database simulations)
+    return `/simulation/custom/${sim.id}`;
   };
 
   const getTypeIcon = (sim) => {
-    // Database AI-generated simulations
+    // All database simulations are AI-generated
     if (sim.is_ai_generated) {
       return '🤖';
     }
-    // localStorage AI-generated simulations
-    if (sim.isAIGenerated) {
-      return '🤖';
+    // Use category to determine icon
+    if (sim.category) {
+      const cat = sim.category.toLowerCase();
+      if (cat.includes('customer') || cat.includes('service')) return '💬';
+      if (cat.includes('sales')) return '💼';
+      if (cat.includes('priorit') || cat.includes('management')) return '📋';
+      if (cat.includes('team') || cat.includes('conflict')) return '👥';
+      if (cat.includes('product')) return '📦';
+      if (cat.includes('leadership')) return '👔';
+      if (cat.includes('marketing')) return '📢';
+      if (cat.includes('hr') || cat.includes('human')) return '👤';
     }
-    // Template simulations
-    switch (sim.type) {
-      case 'customer-comments':
-        return '💬';
-      case 'sales-negotiation':
-        return '💼';
-      case 'prioritization':
-        return '📋';
-      case 'team-conflict':
-        return '👥';
-      default:
-        return '🎯';
-    }
+    return '🎯';
   };
 
   if (loading) {

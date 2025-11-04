@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { generateHTMLSimulation, regenerateHTMLSimulation } from '../services/secureAiService';
 import { databaseService } from '../services/databaseService';
+import { activityService } from '../services/activityService';
 
 const AIBuilder = ({ onSimulationCreated }) => {
   const [step, setStep] = useState(1);
@@ -212,6 +213,18 @@ const AIBuilder = ({ onSimulationCreated }) => {
       });
       
       console.log('✅ Simulation saved to database:', savedSimulation.id);
+      
+      // Log activity
+      await activityService.logActivity('simulation_created', {
+        simulation_id: savedSimulation.id,
+        title: savedSimulation.title,
+        category: savedSimulation.category,
+      });
+      
+      await activityService.logActivity('simulation_published', {
+        simulation_id: savedSimulation.id,
+        title: savedSimulation.title,
+      });
       
       onSimulationCreated(savedSimulation);
       alert('✅ Simulation published successfully to database!');

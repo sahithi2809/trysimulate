@@ -62,6 +62,24 @@ export const databaseService = {
    */
   async saveSimulation(simulationData) {
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Get user profile for creator name
+      let creatorName = null;
+      if (user) {
+        try {
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('full_name')
+            .eq('id', user.id)
+            .single();
+          creatorName = profile?.full_name || user.email?.split('@')[0] || 'Anonymous';
+        } catch (err) {
+          creatorName = user.email?.split('@')[0] || 'Anonymous';
+        }
+      }
+
       const { data, error } = await supabase
         .from('simulations')
         .insert({
@@ -76,8 +94,10 @@ export const databaseService = {
           is_ai_generated: true,
           is_published: true,
           tags: simulationData.tags || [],
+          created_by: user?.id || null,
+          creator_name: creatorName,
           metadata: {
-            ai_model: 'gpt-4o-mini',
+            ai_model: 'gemini-2.5-pro',
             generation_prompt: simulationData.userPrompt || '',
             version: '1.0',
             created_via: 'ai_builder'
@@ -125,6 +145,36 @@ export const databaseService = {
       return data;
     } catch (error) {
       console.error('Error in updateSimulation:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get simulations created by current user
+   * @returns {Promise<Array>} Array of simulation objects
+   */
+  async getUserSimulations() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from('simulations')
+        .select('*')
+        .eq('created_by', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Database error fetching user simulations:', error);
+        throw error;
+      }
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error in getUserSimulations:', error);
       throw error;
     }
   },
