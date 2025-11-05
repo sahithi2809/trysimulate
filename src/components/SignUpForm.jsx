@@ -193,7 +193,7 @@ const SignUpForm = ({ onSuccess, onSwitchToSignIn }) => {
         {/* Marketing Purpose */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            What would you like to use TrySimulate for?
+            What would you like to use Simulate for?
             <span className="text-slate-400 text-xs ml-1">(Optional, for marketing insights)</span>
           </label>
           <textarea

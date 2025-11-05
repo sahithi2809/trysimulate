@@ -15,7 +15,7 @@ export const authService = {
         data: {
           full_name: userData.fullName,
         },
-        emailRedirectTo: `${window.location.origin}/trysimulate/auth/callback`,
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
         // Disable email confirmation to allow any email address
         // Note: This requires Supabase Auth settings to have "Confirm email" disabled
       }
@@ -66,7 +66,7 @@ export const authService = {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/trysimulate/auth/callback`,
+            redirectTo: `${window.location.origin}/auth/callback`,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',

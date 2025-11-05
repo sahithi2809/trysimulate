@@ -20,7 +20,7 @@ import CompleteProfile from './pages/CompleteProfile';
 function App() {
   return (
     <AuthProvider>
-      <Router basename="/trysimulate">
+      <Router>
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
           <Routes>
             <Route path="/auth" element={<><Navbar /><AuthPage /></>} />

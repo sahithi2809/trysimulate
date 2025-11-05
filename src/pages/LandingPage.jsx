@@ -37,7 +37,7 @@ const LandingPage = () => {
                 to="/creator"
                 className="px-8 py-4 text-lg font-semibold text-slate-700 bg-white border-2 border-slate-300 rounded-xl hover:border-primary hover:text-primary transition-all duration-200"
               >
-                Create Your Own
+                Create Simulations
               </Link>
             </div>
           </div>
@@ -65,10 +65,10 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 mb-4">
-              How TrySimulate Works
+              How Simulate Works
             </h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              Whether you're a creator or a learner, TrySimulate makes workplace simulations accessible to everyone.
+              Whether you're a creator or a learner, Simulate makes workplace simulations accessible to everyone.
             </p>
           </div>
 
@@ -128,7 +128,7 @@ const LandingPage = () => {
                 </li>
                 <li className="flex items-start">
                   <span className="text-primary mr-2">✓</span>
-                  <span>Publish to TrySimulate library</span>
+                  <span>Publish to Simulate library</span>
                 </li>
               </ul>
             </div>
@@ -191,7 +191,7 @@ const LandingPage = () => {
             Ready to Build Your Skills?
           </h2>
           <p className="text-xl text-white/90 mb-8">
-            Join TrySimulate today and start practicing real workplace scenarios.
+            Join Simulate today and start practicing real workplace scenarios.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
@@ -214,7 +214,7 @@ const LandingPage = () => {
       <footer className="py-12 px-4 sm:px-6 lg:px-8 bg-slate-900 text-white">
         <div className="max-w-7xl mx-auto text-center">
           <p className="text-slate-400">
-            © 2025 TrySimulate. Building the future of workplace learning.
+            © 2025 Simulate. Building the future of workplace learning.
           </p>
         </div>
       </footer>
