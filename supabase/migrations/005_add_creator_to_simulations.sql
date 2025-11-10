@@ -12,3 +12,5 @@ CREATE POLICY IF NOT EXISTS "Creators can manage own simulations" ON simulations
   USING (created_by = auth.uid())
   WITH CHECK (created_by = auth.uid());
 
+
+

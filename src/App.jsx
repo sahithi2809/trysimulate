@@ -6,6 +6,7 @@ import LandingPage from './pages/LandingPage';
 import BrowseSimulations from './pages/BrowseSimulations';
 import CreatorDashboard from './pages/CreatorDashboard';
 import SimulationBuilder from './pages/SimulationBuilder';
+import BuilderTest from './pages/BuilderTest';
 import CustomerCommentsSimulation from './pages/simulations/CustomerCommentsSimulation';
 import SalesNegotiationSimulation from './pages/simulations/SalesNegotiationSimulation';
 import PrioritizationSimulation from './pages/simulations/PrioritizationSimulation';
@@ -30,6 +31,7 @@ function App() {
             <Route path="/browse" element={<><Navbar /><BrowseSimulations /></>} />
             <Route path="/creator" element={<><Navbar /><CreatorDashboard /></>} />
             <Route path="/creator/build" element={<><Navbar /><SimulationBuilder /></>} />
+            <Route path="/builder-test" element={<><Navbar /><BuilderTest /></>} />
             <Route path="/simulation/customer-comments/:id" element={<><Navbar /><CustomerCommentsSimulation /></>} />
             <Route path="/simulation/sales-negotiation/:id" element={<><Navbar /><SalesNegotiationSimulation /></>} />
             <Route path="/simulation/prioritization/:id" element={<><Navbar /><PrioritizationSimulation /></>} />

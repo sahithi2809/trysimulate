@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { generateHTMLSimulation, regenerateHTMLSimulation } from '../services/secureAiService';
 import { databaseService } from '../services/databaseService';
 import { activityService } from '../services/activityService';
@@ -93,44 +94,81 @@ const AIBuilder = ({ onSimulationCreated }) => {
   };
 
   const generateStructuredPrompt = () => {
-    return `
-      Create a ${formData.simulationType} simulation with these specifications:
-      
-      TITLE: ${formData.title}
-      DESCRIPTION: ${formData.description}
-      
-      SIMULATION TYPE: ${formData.simulationType}
-      INDUSTRY: ${formData.industry}
-      TARGET AUDIENCE: ${formData.targetAudience}
-      EXPERIENCE LEVEL: ${formData.experienceLevel}
-      DURATION: ${formData.duration}
-      DIFFICULTY: ${formData.difficulty}
-      NUMBER OF STEPS: ${formData.numberOfSteps}
-      
-      LEARNING OBJECTIVES:
-      ${formData.learningObjectives.map(obj => `- ${obj}`).join('\n')}
-      
-      SKILLS TESTED:
-      ${formData.skillsTested.join(', ')}
-      
-      CONTEXT:
-      ${formData.scenarioContext}
-      
-      SPECIFIC REQUIREMENTS:
-      ${formData.specificRequirements.map(req => `- ${req}`).join('\n')}
-      
-      ADDITIONAL CONTEXT:
-      ${formData.additionalContext}
-      
-      Create an interactive HTML simulation that:
-      1. Follows the ${formData.simulationType} format
-      2. Tests the specified skills: ${formData.skillsTested.join(', ')}
-      3. Takes approximately ${formData.duration}
-      4. Includes ${formData.numberOfSteps} main steps/scenarios
-      5. Provides feedback and scoring
-      6. Is appropriate for ${formData.experienceLevel} level learners
-      7. Focuses on: ${formData.learningObjectives.join(', ')}
-    `;
+    const header = `
+You are an AI-powered business simulation expert. Your goal is to create a dynamic and realistic business simulation.
+
+---
+**SIMULATION REQUIREMENTS:**
+
+**Title:** ${formData.title || 'Not specified'}
+**Description:** ${formData.description || 'Not specified'}
+**Target Audience:** ${formData.targetAudience || 'Not specified'}
+**Type of Simulation:** ${formData.simulationType || 'General (AI may choose best format)'}
+**Learning Objectives:** ${formData.learningObjectives.length > 0 ? formData.learningObjectives.map(obj => `- ${obj}`).join('\n') : 'Not specified'}
+**Skills to be Tested:** ${formData.skillsTested.length > 0 ? formData.skillsTested.join(', ') : 'Not specified'}
+**Industry & Experience Level:** ${formData.industry || 'Not specified'}, ${formData.experienceLevel || 'Not specified'}
+**Scenario Context:** ${formData.scenarioContext || 'Not specified'}
+**Duration:** ${formData.duration || 'Not specified'}
+**Difficulty:** ${formData.difficulty || 'Not specified'}
+**Number of Steps:** ${formData.numberOfSteps || 5}
+**Specific Requirements:** ${formData.specificRequirements.length > 0 ? formData.specificRequirements.map(req => `- ${req}`).join('\n') : 'None specified'}
+**Additional Context:** ${formData.additionalContext || 'None'}
+
+---
+**SIMULATION GENERATION INSTRUCTIONS:**
+
+1. **Structure:** Create a step-by-step simulation. Each step must clearly present the scenario, offer three distinct decision choices (A, B, C), and explain the immediate outcome of each choice.
+2. **Realism:** Ensure all scenarios, decisions, and outcomes feel authentic for the specified audience, industry, and role.
+3. **Engagement:** Make the narrative immersive and challenging, introducing real workplace stakes.
+4. **Learning:** Explicitly connect choices and outcomes to the learning objectives and skills being assessed.
+5. **Output Format (IMPORTANT):**
+   Provide the simulation in the following markdown structure:
+
+   # Simulation: ${formData.title}
+
+   ## Introduction
+   [Write an engaging intro based on the description]
+
+   ## Setup
+   [Describe initial conditions, roles, industry context, experience level, scenario setup]
+
+   ${Array.from({ length: formData.numberOfSteps || 5 }, (_, i) => `## Step ${i + 1}: [Step Title]
+   ### Scenario
+   [Detailed scenario description for Step ${i + 1}]
+   ### Your Options:
+   A. [Option 1 that tests ${formData.skillsTested.join(', ')}]
+   B. [Option 2]
+   C. [Option 3]
+   ### Potential Outcomes:
+   *   **If you choose A:** [Describe outcome, consequences, and skills demonstrated]
+   *   **If you choose B:** [Describe outcome, consequences, and skills demonstrated]
+   *   **If you choose C:** [Describe outcome, consequences, and skills demonstrated]
+   ---`).join('\n\n')}
+
+   **CRITICAL:** Return ONLY valid JSON with this structure:
+   {
+     "metadata": {
+       "title": "${formData.title}",
+       "description": "${formData.description}",
+       "category": "Based on the simulation (e.g., Product Management, Sales, Leadership, etc.)",
+       "difficulty": "${formData.difficulty}",
+       "duration": "${formData.duration}",
+       "learningObjectives": ${JSON.stringify(formData.learningObjectives)}
+     },
+     "markdownContent": "# Simulation: ${formData.title}\\n\\n## Introduction\\n...complete markdown output with all steps and outcomes..."
+   }
+
+**SIMULATION REQUIREMENTS:**
+- Use SPECIFIC company names, realistic metrics, and stakeholder dynamics appropriate for ${formData.industry || 'the chosen industry'}.
+- Tie every choice to the skills being tested: ${formData.skillsTested.join(', ') || 'core workplace competencies'}.
+- Ensure consequences feel tangible and insightful for ${formData.targetAudience || 'the intended audience'} at a/an ${formData.experienceLevel || 'appropriate'} level.
+- Maintain the requested duration of ${formData.duration || '15-20 minutes'} with ${formData.numberOfSteps || 5} pivotal steps.
+- Highlight ${formData.learningObjectives.join(', ') || 'key learning goals'} throughout the narrative.
+
+**Start generating the simulation now, beginning with the Introduction.**
+`;
+
+    return header;
   };
 
   const validateForm = () => {
@@ -165,7 +203,7 @@ const AIBuilder = ({ onSimulationCreated }) => {
       
       const simulation = await generateHTMLSimulation(structuredPrompt);
       console.log('🎯 Generated simulation:', simulation);
-      console.log('📄 HTML Content length:', simulation.htmlContent?.length);
+      console.log('📄 Markdown length:', simulation.markdownContent?.length);
       setGeneratedSimulation(simulation);
       setStep(2); // Move to preview step
     } catch (err) {
@@ -186,7 +224,7 @@ const AIBuilder = ({ onSimulationCreated }) => {
 
     try {
       const simulation = await regenerateHTMLSimulation(
-        generatedSimulation.htmlContent,
+        generatedSimulation.markdownContent,
         regenerationFeedback
       );
       setGeneratedSimulation(simulation);
@@ -649,7 +687,7 @@ const AIBuilder = ({ onSimulationCreated }) => {
             )}
           </div>
 
-          {/* HTML Preview Section */}
+          {/* Markdown Preview Section */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h3 className="text-xl font-semibold text-slate-800 mb-4">📱 Simulation Preview</h3>
             <div className="border-2 border-slate-200 rounded-lg overflow-hidden">
@@ -662,18 +700,14 @@ const AIBuilder = ({ onSimulationCreated }) => {
                 </div>
               </div>
               <div className="bg-white">
-                {generatedSimulation.htmlContent ? (
-                  <iframe
-                    srcDoc={generatedSimulation.htmlContent}
-                    title="Simulation Preview"
-                    className="w-full border-0"
-                    style={{ minHeight: '600px', height: '70vh' }}
-                    sandbox="allow-scripts allow-same-origin allow-forms"
-                  />
+                {generatedSimulation.markdownContent ? (
+                  <div className="p-6 max-h-[70vh] overflow-y-auto prose prose-slate max-w-none">
+                    <ReactMarkdown>{generatedSimulation.markdownContent}</ReactMarkdown>
+                  </div>
                 ) : (
                   <div className="p-8 text-center text-slate-500">
                     <div className="text-4xl mb-4">⚠️</div>
-                    <div className="text-lg font-medium mb-2">No HTML content generated</div>
+                    <div className="text-lg font-medium mb-2">No markdown content generated</div>
                     <div className="text-sm">The simulation generation may have failed. Check the console for errors.</div>
                   </div>
                 )}

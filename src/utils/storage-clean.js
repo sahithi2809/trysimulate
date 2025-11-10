@@ -164,3 +164,5 @@ export const clearAllData = () => {
   localStorage.removeItem(STORAGE_KEYS.USER_PROGRESS);
   localStorage.removeItem(STORAGE_KEYS.CUSTOM_SIMULATIONS);
 };
+
+

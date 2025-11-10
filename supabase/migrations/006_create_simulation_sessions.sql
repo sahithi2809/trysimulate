@@ -77,3 +77,5 @@ CREATE TRIGGER update_session_duration_trigger
   FOR EACH ROW
   EXECUTE FUNCTION update_session_duration();
 
+
+

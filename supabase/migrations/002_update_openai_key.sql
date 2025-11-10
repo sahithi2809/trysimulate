@@ -5,3 +5,5 @@ SET
   updated_at = NOW()
 WHERE key_name = 'OPENAI_API_KEY';
 
+
+

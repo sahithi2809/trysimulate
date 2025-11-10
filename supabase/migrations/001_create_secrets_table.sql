@@ -64,3 +64,5 @@ ON CONFLICT (key_name) DO NOTHING;
 
 COMMENT ON TABLE secrets IS 'Stores API keys and secrets securely. Only accessible via service role (Edge Functions).';
 
+
+

@@ -74,10 +74,10 @@ serve(async (req) => {
         break
       
       case 'regenerateHTMLSimulation':
-        if (!payload?.currentHTML || !payload?.feedback) {
-          throw new Error('Missing currentHTML or feedback in payload')
+        if (!payload?.currentMarkdown || !payload?.feedback) {
+          throw new Error('Missing currentMarkdown or feedback in payload')
         }
-        result = await regenerateHTMLSimulation(geminiApiKey, payload.currentHTML, payload.feedback)
+        result = await regenerateHTMLSimulation(geminiApiKey, payload.currentMarkdown, payload.feedback)
         break
       
       // Legacy support for old flow
@@ -122,85 +122,34 @@ serve(async (req) => {
   }
 })
 
-// Generate complete HTML simulation in one step
+// Generate markdown-based simulation in one step
 async function generateHTMLSimulation(apiKey: string, userPrompt: string) {
   const simulationPrompt = `
-You are a world-class workplace simulation designer. Create a complete, interactive HTML simulation based on this user request:
+You are an elite workplace simulation architect.
 
-"${userPrompt}"
+USER REQUEST:
+${userPrompt}
 
-CRITICAL REQUIREMENTS:
-1. Generate a COMPLETE, STANDALONE HTML simulation with embedded CSS and JavaScript
-2. Use SPECIFIC company names, products, and realistic scenarios (e.g., "Spotify", "Netflix", "Airbnb", "Tesla")
-3. Include REAL details: actual metrics, timelines, stakeholder names, industry-specific jargon
-4. Make it FULLY INTERACTIVE with JavaScript for:
-   - User input collection (text areas, forms, buttons, dropdowns)
-   - Real-time validation and feedback
-   - Scoring mechanisms
-   - Dynamic content updates
-5. Design must be MODERN and PROFESSIONAL:
-   - Clean, minimal interface
-   - Proper spacing and typography
-   - Responsive layout
-   - Smooth animations and transitions
-6. Include clear instructions, rich scenario context, and detailed feedback
-
-SIMULATION TYPES YOU CAN CREATE:
-- Customer service responses (rate empathy, clarity, resolution)
-- Sales negotiations (multi-turn conversations)
-- Prioritization exercises (drag-and-drop or ranking)
-- Decision trees (branching scenarios with consequences)
-- Role-play conversations (back-and-forth dialogue)
-- Data analysis (interpret charts/metrics and make decisions)
-- Crisis management (time-pressured decisions)
-- Team conflict resolution
-- Product roadmap decisions
-- Any other workplace scenario!
-
-HTML STRUCTURE REQUIREMENTS:
-- Use semantic HTML5
-- Include a clear header with simulation title and context
-- Main content area with the interactive simulation
-- Footer with scoring/feedback section
-- All CSS must be inline in a <style> tag
-- All JavaScript must be inline in a <script> tag at the end
-- Make it 100% self-contained (no external dependencies)
-
-STYLING GUIDELINES:
-- Use modern color palette (blues, greens, neutrals)
-- Font: system-ui or sans-serif
-- Proper contrast for readability
-- Cards/boxes with subtle shadows
-- Buttons with hover effects
-- Input fields with clear labels
-
-JAVASCRIPT REQUIREMENTS:
-- Add event listeners for user interactions
-- Calculate scores based on user input
-- Provide immediate, specific feedback
-- Show results in a summary section
-- Allow reset/retry functionality
-
-Return ONLY a JSON object with this structure:
+OUTPUT RULES:
+- Respond with JSON only. No markdown fences, no commentary.
+- JSON shape:
 {
   "metadata": {
-    "title": "Compelling simulation title",
-    "description": "2-3 sentence description of what user will learn",
-    "category": "Product Management|Sales|Leadership|Marketing|HR|Engineering|Operations|Customer Service",
+    "title": "...",
+    "description": "...",
+    "category": "Product Management|Sales|Leadership|Marketing|HR|Engineering|Operations|Customer Service|Other",
     "difficulty": "Beginner|Intermediate|Advanced",
-    "duration": "10-20 min",
-    "learningObjectives": ["specific objective 1", "specific objective 2", "specific objective 3"]
+    "duration": "5-10 min|10-15 min|15-20 min|20-30 min|30+ min",
+    "learningObjectives": ["objective 1", "objective 2", "objective 3"]
   },
-  "htmlContent": "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>...</title><style>...modern CSS here...</style></head><body>...interactive content with buttons/forms...</body><script>...scoring and interaction logic...</script></html>"
+  "markdownContent": "# Simulation: ...\\n\\n## Introduction\\n...\\n\\n## Setup\\n...\\n\\n## Step 1: ...\\n### Scenario\\n...\\n### Your Options:\\nA. ...\\nB. ...\\nC. ...\\n### Potential Outcomes:\\n* **If you choose A:** ...\\n* **If you choose B:** ...\\n* **If you choose C:** ...\\n---\\n\\n## Step 2: ... (continue for all steps)"
 }
 
-EXAMPLES OF EXCELLENCE:
-- ChatGPT's customer comments simulation: Multiple comments, text replies, scores empathy/clarity/helpfulness
-- Real sales negotiation: Multi-step conversation, budget discussions, objection handling
-- PM prioritization: Drag tasks, score based on impact/urgency/effort
-
-Make it SPECIFIC to the request. Use REAL company/product names. Create something that feels valuable and realistic!
-  `
+CONTENT GUIDELINES:
+- Use realistic business context, company names, metrics, stakeholders.
+- Elevate stakes and learning tension. Each option must probe different skills and the outcomes must spell out impact.
+- Keep the tone professional yet engaging, highlighting the competencies being evaluated.
+`
 
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
     method: 'POST',
@@ -227,48 +176,89 @@ Make it SPECIFIC to the request. Use REAL company/product names. Create somethin
   }
 
   const data = await response.json()
-  const responseText = data.candidates[0].content.parts[0].text
-  const result = JSON.parse(responseText)
-  
-  // Add system metadata
+  let responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+
+  responseText = responseText.trim()
+  if (responseText.startsWith('```')) {
+    responseText = responseText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
+  }
+
+  let result
+  try {
+    result = JSON.parse(responseText)
+  } catch (parseError) {
+    console.error('JSON parse error (primary):', parseError)
+    console.error('Response preview:', responseText.substring(0, 400))
+
+    const markdownMatch = responseText.match(/"markdownContent"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/)
+    const titleMatch = responseText.match(/"title"\s*:\s*"([^"]*)"/)
+    const descMatch = responseText.match(/"description"\s*:\s*"([^"]*)"/)
+
+    if (!markdownMatch) {
+      throw new Error(`Failed to parse Gemini response as JSON: ${parseError.message}`)
+    }
+
+    let markdownContent = markdownMatch[1]
+    markdownContent = markdownContent
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '\t')
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\')
+
+    result = {
+      metadata: {
+        title: titleMatch ? titleMatch[1] : 'AI Generated Simulation',
+        description: descMatch ? descMatch[1] : 'An interactive workplace simulation',
+        category: 'General',
+        difficulty: 'Intermediate',
+        duration: '15-20 min',
+        learningObjectives: []
+      },
+      markdownContent
+    }
+  }
+
+  if (!result.markdownContent) {
+    throw new Error('Generated response missing markdownContent field')
+  }
+
   return {
     id: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    type: 'html',
+    type: 'markdown',
     isAIGenerated: true,
-    isHTMLSimulation: true,
+    isMarkdownSimulation: true,
     created: new Date().toISOString().split('T')[0],
-    ...result.metadata,
-    htmlContent: result.htmlContent
+    ...(result.metadata || {}),
+    markdownContent: result.markdownContent
   }
 }
 
-// Regenerate HTML simulation based on feedback
-async function regenerateHTMLSimulation(apiKey: string, currentHTML: string, feedback: string) {
+// Regenerate markdown simulation based on feedback
+async function regenerateHTMLSimulation(apiKey: string, currentMarkdown: string, feedback: string) {
   const regenerationPrompt = `
-You are a workplace simulation designer. Improve this HTML simulation based on user feedback.
+You are a workplace simulation designer. Improve this markdown simulation based on user feedback.
 
-CURRENT HTML SIMULATION:
-${currentHTML.substring(0, 2000)}... (truncated)
+CURRENT MARKDOWN SIMULATION:
+${currentMarkdown.substring(0, 2000)}... (truncated)
 
 USER FEEDBACK: "${feedback}"
 
 INSTRUCTIONS:
-1. Keep the same general structure and interaction type
-2. Apply the user's feedback to improve the simulation
-3. Make sure it's still fully self-contained with inline CSS and JavaScript
-4. Maintain professional design and interactivity
+1. Preserve the structure (Introduction, Setup, Step sections with Options & Outcomes)
+2. Apply the feedback to sharpen realism, stakes, and learning value
+3. Ensure each option/outcome clearly states consequences and skill insights
 
 Return a JSON object with:
 {
   "metadata": {
-    "title": "Updated title if needed",
-    "description": "Updated description",
-    "category": "same or updated category",
-    "difficulty": "same or updated difficulty",
-    "duration": "estimated duration",
-    "learningObjectives": ["updated objectives"]
+    "title": "...",
+    "description": "...",
+    "category": "...",
+    "difficulty": "...",
+    "duration": "...",
+    "learningObjectives": ["..."]
   },
-  "htmlContent": "Complete improved HTML with inline CSS and JavaScript"
+  "markdownContent": "# Simulation: ...\\n..."
 }
   `
 
@@ -297,16 +287,59 @@ Return a JSON object with:
   }
 
   const data = await response.json()
-  const responseText = data.candidates[0].content.parts[0].text
-  const result = JSON.parse(responseText)
-  
+  let responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+
+  responseText = responseText.trim()
+  if (responseText.startsWith('```')) {
+    responseText = responseText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
+  }
+
+  let result
+  try {
+    result = JSON.parse(responseText)
+  } catch (parseError) {
+    console.error('JSON parse error (regenerate):', parseError)
+    console.error('Response preview:', responseText.substring(0, 400))
+
+    const markdownMatch = responseText.match(/"markdownContent"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/)
+    const titleMatch = responseText.match(/"title"\s*:\s*"([^"]*)"/)
+    const descMatch = responseText.match(/"description"\s*:\s*"([^"]*)"/)
+
+    if (!markdownMatch) {
+      throw new Error(`Failed to parse Gemini response as JSON: ${parseError.message}`)
+    }
+
+    let markdownContent = markdownMatch[1]
+    markdownContent = markdownContent
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '\t')
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\')
+
+    result = {
+      metadata: {
+        title: titleMatch ? titleMatch[1] : 'AI Generated Simulation',
+        description: descMatch ? descMatch[1] : 'An interactive workplace simulation',
+        category: 'General',
+        difficulty: 'Intermediate',
+        duration: '15-20 min',
+        learningObjectives: []
+      },
+      markdownContent
+    }
+  }
+
+  if (!result.markdownContent) {
+    throw new Error('Generated response missing markdownContent field')
+  }
+
   return {
     id: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    type: 'html',
+    type: 'markdown',
     isAIGenerated: true,
-    isHTMLSimulation: true,
+    isMarkdownSimulation: true,
     created: new Date().toISOString().split('T')[0],
-    ...result.metadata,
-    htmlContent: result.htmlContent
+    ...(result.metadata || {}),
+    markdownContent: result.markdownContent
   }
 }

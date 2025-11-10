@@ -52,3 +52,5 @@ CREATE POLICY "Users can create own activity" ON user_activity
   FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+
+

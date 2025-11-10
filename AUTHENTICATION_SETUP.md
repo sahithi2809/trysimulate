@@ -233,3 +233,5 @@ const session = await activityService.startSimulation(simulationId);
 
 **🎊 Authentication system is ready! Users can now sign up, log in, and all their activity is being tracked!**
 
+
+

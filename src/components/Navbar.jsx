@@ -60,14 +60,14 @@ const Navbar = () => {
               Browse Simulations
             </Link>
             <Link
-              to="/creator"
+              to="/builder-test"
               className={`text-sm font-medium transition-colors ${
-                isActive('/creator')
+                isActive('/builder-test')
                   ? 'text-primary'
                   : 'text-slate-600 hover:text-primary'
               }`}
             >
-              Creator Dashboard
+              Simulation Builder
             </Link>
           </div>
 
@@ -115,11 +115,11 @@ const Navbar = () => {
                       <p className="text-xs text-slate-500">{user?.email}</p>
                     </div>
                     <Link
-                      to="/creator"
+                      to="/builder-test"
                       className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
                       onClick={() => setShowMenu(false)}
                     >
-                      Creator Dashboard
+                      Simulation Builder
                     </Link>
                     <button
                       onClick={handleSignOut}

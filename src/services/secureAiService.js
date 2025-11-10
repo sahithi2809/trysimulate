@@ -7,13 +7,84 @@ import { supabase } from '../config/supabaseClient'
  */
 
 const EDGE_FUNCTION_NAME = 'ai-generate'
+const SIMPLE_GENERATE_FUNCTION = 'generate-simulation'
+const CREATE_SIMULATION_FUNCTION = 'create-simulation'
+
+const getEnvValue = (...keys) => {
+  for (const key of keys) {
+    if (key in import.meta.env && import.meta.env[key]) {
+      return import.meta.env[key]
+    }
+  }
+
+  if (typeof process !== 'undefined' && process?.env) {
+    for (const key of keys) {
+      if (process.env[key]) {
+        return process.env[key]
+      }
+    }
+  }
+
+  return ''
+}
+
+const SUPABASE_URL = getEnvValue('VITE_SUPABASE_URL', 'REACT_APP_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL')
+const SUPABASE_ANON_KEY = getEnvValue(
+  'VITE_SUPABASE_ANON_KEY',
+  'REACT_APP_SUPABASE_ANON_KEY',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+)
+
+const CREATE_SIMULATION_BASE = SUPABASE_URL
+  ? `${SUPABASE_URL.replace(/\/$/, '')}/functions/v1/${CREATE_SIMULATION_FUNCTION}`
+  : ''
+
+function buildCreateSimulationUrl(path = '') {
+  if (!CREATE_SIMULATION_BASE) {
+    throw new Error('Supabase URL is not configured. Set VITE_SUPABASE_URL.')
+  }
+
+  if (!path) return CREATE_SIMULATION_BASE
+
+  const normalized = path.startsWith('/') ? path.slice(1) : path
+  return `${CREATE_SIMULATION_BASE}/${normalized}`
+}
+
+async function callCreateSimulationEndpoint(path, { method = 'POST', body } = {}) {
+  if (!SUPABASE_ANON_KEY) {
+    throw new Error('Supabase anon key is not configured. Set VITE_SUPABASE_ANON_KEY.')
+  }
+
+  const url = buildCreateSimulationUrl(path)
+  const response = await fetch(url, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok || data.error || data.ok === false) {
+    const message = data.error || data.message || `Request failed with status ${response.status}`
+    throw new Error(message)
+  }
+
+  return data
+}
 
 /**
  * Call the secure Edge Function
  */
-async function callEdgeFunction(action, payload) {
+async function callEdgeFunction(action, payload, override) {
   try {
-    console.log('🔧 Calling Edge Function:', EDGE_FUNCTION_NAME)
+    const functionName = override?.functionName || EDGE_FUNCTION_NAME
+    const requestBody = override?.body || { action, payload }
+
+    console.log('🔧 Calling Edge Function:', functionName)
     console.log('📤 Action:', action)
     console.log('📦 Payload:', payload)
     
@@ -22,11 +93,8 @@ async function callEdgeFunction(action, payload) {
       throw new Error('Supabase client is not initialized. Check your .env file for VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY')
     }
     
-    const { data, error } = await supabase.functions.invoke(EDGE_FUNCTION_NAME, {
-      body: {
-        action,
-        payload
-      }
+    const { data, error } = await supabase.functions.invoke(functionName, {
+      body: requestBody
     })
 
     console.log('📥 Response data:', data)
@@ -68,17 +136,17 @@ async function callEdgeFunction(action, payload) {
  */
 export const generateHTMLSimulation = async (userPrompt) => {
   try {
-    console.log('🚀 Generating HTML simulation with GPT-4-turbo-preview...')
+    console.log('🚀 Generating markdown simulation with Gemini 2.5 Pro...')
     console.log('User prompt:', userPrompt)
     
     const simulation = await callEdgeFunction('generateHTMLSimulation', {
       userPrompt
     })
     
-    console.log('✅ HTML Simulation generated successfully!')
+    console.log('✅ Simulation generated successfully!')
     console.log('- Title:', simulation.title)
     console.log('- Category:', simulation.category)
-    console.log('- HTML length:', simulation.htmlContent?.length || 0, 'characters')
+    console.log('- Markdown length:', simulation.markdownContent?.length || 0, 'characters')
     
     return simulation
   } catch (error) {
@@ -88,19 +156,70 @@ export const generateHTMLSimulation = async (userPrompt) => {
 }
 
 /**
+ * Simplified generation endpoint (prompt only)
+ */
+export const generateSimulationWithPrompt = async (prompt) => {
+  try {
+    const simulation = await callEdgeFunction(undefined, undefined, {
+      functionName: SIMPLE_GENERATE_FUNCTION,
+      body: { prompt },
+    })
+
+    return simulation
+  } catch (error) {
+    console.error('Failed to generate simulation via generate-simulation:', error)
+    throw new Error(`Failed to generate simulation: ${error.message}`)
+  }
+}
+
+/**
+ * Create a structured simulation using the create-simulation Edge Function
+ */
+export const createSimulationFromPrompt = async ({ title, prompt }) => {
+  try {
+    const payload = await callCreateSimulationEndpoint('create', {
+      method: 'POST',
+      body: { title, prompt },
+    })
+
+    return payload
+  } catch (error) {
+    console.error('Failed to create simulation:', error)
+    throw new Error(`Failed to create simulation: ${error.message}`)
+  }
+}
+
+/**
+ * Submit a user response for evaluation feedback
+ */
+export const evaluateSimulationResponse = async ({ simulation, userResponse }) => {
+  try {
+    const payload = await callCreateSimulationEndpoint('evaluate', {
+      method: 'POST',
+      body: { simulation, userResponse },
+    })
+
+    return payload
+  } catch (error) {
+    console.error('Failed to evaluate simulation response:', error)
+    throw new Error(`Failed to evaluate simulation: ${error.message}`)
+  }
+}
+
+/**
  * NEW: Regenerate HTML simulation with feedback
  */
-export const regenerateHTMLSimulation = async (currentHTML, feedback) => {
+export const regenerateHTMLSimulation = async (currentMarkdown, feedback) => {
   try {
-    console.log('🔄 Regenerating HTML simulation with feedback...')
+    console.log('🔄 Regenerating markdown simulation with feedback...')
     console.log('Feedback:', feedback)
     
     const simulation = await callEdgeFunction('regenerateHTMLSimulation', {
-      currentHTML,
+      currentMarkdown,
       feedback
     })
     
-    console.log('✅ HTML Simulation regenerated successfully!')
+    console.log('✅ Simulation regenerated successfully!')
     return simulation
   } catch (error) {
     console.error('Failed to regenerate HTML simulation:', error)
