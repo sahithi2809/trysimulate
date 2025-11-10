@@ -16,6 +16,7 @@ export const databaseService = {
         .from('simulations')
         .select('*')
         .eq('is_published', true)
+        .contains('metadata', { is_active: true })
         .order('created_at', { ascending: false });
       
       if (error) {
@@ -93,6 +94,7 @@ export const databaseService = {
           html_content: simulationData.htmlContent,
           is_ai_generated: true,
           is_published: true,
+          is_active: true,
           tags: simulationData.tags || [],
           created_by: user?.id || null,
           creator_name: creatorName,
@@ -100,7 +102,8 @@ export const databaseService = {
             ai_model: 'gemini-2.5-pro',
             generation_prompt: simulationData.userPrompt || '',
             version: '1.0',
-            created_via: 'ai_builder'
+            created_via: 'ai_builder',
+            is_active: true
           }
         })
         .select()

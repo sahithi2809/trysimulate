@@ -1,0 +1,330 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>PM Prioritization Simulation — Colorful Drag & Drop</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <style>
+    :root{
+      --bg:#f0f6fb;
+      --card:#ffffff;
+      --muted:#5b6b7a;
+      --accent:#0ea5a4;
+      --glass: rgba(255,255,255,0.6);
+    }
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;background:var(--bg);color:#0b1720}
+    .wrap{max-width:1100px;margin:28px auto;padding:18px}
+    .card{background:var(--card);border-radius:14px;padding:16px;box-shadow:0 12px 30px rgba(8,20,40,0.08)}
+    .header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+    h1{margin:0;font-size:22px;letter-spacing:-0.2px}
+    .subtitle{color:var(--muted);font-size:13px;margin-top:6px}
+    .grid{display:grid;grid-template-columns:1fr 460px;gap:20px;margin-top:16px}
+    #taskList{list-style:none;padding:0;margin:12px 0}
+    .task{display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;border:1px solid rgba(12,28,40,0.04);
+          background:linear-gradient(180deg, rgba(255,255,255,0.85), rgba(250,252,255,0.95));
+          cursor:grab;margin-bottom:14px;box-shadow:0 6px 18px rgba(12,24,40,0.04)}
+    .task .meta{font-size:14px;color:#071026;font-weight:700}
+    .task .note{font-size:13px;color:var(--muted);margin-top:6px}
+    .handle{width:44px;height:44px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;flex-shrink:0}
+    .badge{font-size:12px;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.2);color:#fff;margin-left:auto}
+    .btns{display:flex;gap:10px}
+    button{border:0;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700;box-shadow:0 6px 18px rgba(9,30,50,0.06)}
+    .primary{background:linear-gradient(90deg,#06b6d4,#0ea5a4);color:#fff}
+    .mutedBtn{background:#eef6fb;color:#073b4c}
+    .resultScore{font-size:36px;font-weight:900;margin-top:8px;color:#0f172a}
+    .small{font-size:13px;color:var(--muted)}
+    .feedbackList{margin-top:12px;display:flex;flex-direction:column;gap:10px}
+    .fbCard{background:#fff;border-radius:10px;padding:10px;border:1px solid rgba(12,20,40,0.04)}
+    .ok{background:linear-gradient(180deg,#effaf4,#ffffff);border:1px solid #daf6e9;color:#064E3B;padding:12px;border-radius:10px}
+    .warn{background:linear-gradient(180deg,#fff7ed,#fffdf8);border:1px solid #ffe6cc;color:#7c2d12;padding:12px;border-radius:10px}
+    .suggest{margin-top:12px;padding:12px;border-radius:10px;background:#f8fafc;border:1px solid #eef6fb}
+    .mutedText{color:var(--muted);font-size:13px}
+    footer{margin-top:18px;color:var(--muted);font-size:13px;text-align:center}
+    @media (max-width:920px){ .grid{grid-template-columns:1fr} .resultScore{font-size:30px} .handle{width:36px;height:36px} .task{padding:12px} }
+  </style>
+
+  <!-- SortableJS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card header">
+      <div>
+        <h1>Prioritization Simulation — A Busy Product Manager's Day</h1>
+        <div class="subtitle">Drag to reorder the tasks (1 = highest priority). Submit to be scored and get feedback.</div>
+      </div>
+      <div class="btns">
+        <button id="resetBtn" class="mutedBtn">Reset</button>
+        <button id="showIdealBtn" class="mutedBtn">Reveal Ideal Order</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:800">Your task list</div>
+          <div class="small">Drag the colored handle to reorder • gaps added between tasks</div>
+        </div>
+
+        <ol id="taskList" aria-label="Draggable task list"></ol>
+
+        <div style="display:flex;gap:10px;margin-top:12px">
+          <button id="submitBtn" class="primary">Submit Priorities</button>
+        </div>
+
+        <div class="mutedText" style="margin-top:12px">Tip: quick wins, mandatory events, and customer-impacting items should be near the top. Optional work can be postponed.</div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:800">Results</div>
+          <div class="small">Score: lower total distance → better match to ideal</div>
+        </div>
+
+        <div id="resultArea" style="margin-top:12px">
+          <div class="mutedText">No submission yet — submit to view your score and feedback.</div>
+        </div>
+
+        <details id="idealDetails" style="display:none;margin-top:12px">
+          <summary style="cursor:pointer;font-weight:700">Ideal priority order (click to expand)</summary>
+          <div class="suggest" id="idealOrderBox"></div>
+        </details>
+
+        <div style="margin-top:12px;font-weight:700">Quick scoring notes</div>
+        <ul class="small" style="margin-top:6px">
+          <li>Score = round((1 - total_distance / 50) * 100). Max distance = 50 for 10 tasks.</li>
+          <li>Distance = absolute difference between your rank and ideal rank for each task.</li>
+        </ul>
+      </div>
+    </div>
+
+    <footer>Colorful prioritization practice — reset and try different orders as needed.</footer>
+  </div>
+
+<script>
+/* ---------- Scenario data (10 tasks) ---------- */
+const TASKS = [
+  { id:1, title:"Reply to CEO email about release go/no-go", est_time:10, ideal_rank:1, note:"High business impact; time-sensitive (CEO asked for update)" },
+  { id:2, title:"Review high-severity customer bug & assign triage", est_time:20, ideal_rank:2, note:"Customer-visible; may require hotfix" },
+  { id:3, title:"Attend company Town Hall (mandatory)", est_time:60, ideal_rank:3, note:"Fixed time — must attend" },
+  { id:4, title:"Schedule requirements-gathering call for PI planning", est_time:10, ideal_rank:4, note:"Enables PI planning; schedule soon" },
+  { id:5, title:"Approve marketing campaign copy launching tomorrow", est_time:15, ideal_rank:5, note:"Deadline-bound; blocks publish" },
+  { id:6, title:"Update roadmap slide and share with stakeholders", est_time:30, ideal_rank:6, note:"Important for alignment" },
+  { id:7, title:"One-on-one with direct report (scheduled)", est_time:30, ideal_rank:7, note:"People management; scheduled" },
+  { id:8, title:"Respond to vendor on contract renewal/pricing", est_time:20, ideal_rank:8, note:"Renewal in 7 days; can delegate if needed" },
+  { id:9, title:"Review analytics dashboard for KPI anomalies", est_time:25, ideal_rank:9, note:"Monitor for anomalies; lower unless issue found" },
+  { id:10, title:"Prepare optional cross-vertical demo (can skip)", est_time:45, ideal_rank:10, note:"Optional; postpone if busy" }
+];
+
+const MAX_DISTANCE = 50; // worst-case
+
+/* color palette for handles (keeps color tied to task id so color persists on reorder) */
+const PALETTE = ['#06b6d4','#ef4444','#f59e0b','#10b981','#6366f1','#ec4899','#8b5cf6','#14b8a6','#fb7185','#f97316'];
+
+/* ---------- UI helpers ---------- */
+const taskListEl = document.getElementById('taskList');
+const resultArea = document.getElementById('resultArea');
+const idealOrderBox = document.getElementById('idealOrderBox');
+const idealDetails = document.getElementById('idealDetails');
+
+function createTaskItem(task) {
+  const li = document.createElement('li');
+  li.className = 'task';
+  li.setAttribute('data-id', task.id);
+
+  // color tied to task id
+  const color = PALETTE[(task.id - 1) % PALETTE.length];
+
+  li.innerHTML = `
+    <div class="handle" title="drag" style="background:${color};box-shadow:0 8px 18px ${hexToRgba(color,0.15)}">${task.id}</div>
+    <div style="flex:1">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="taskIndex" style="font-weight:800;color:#0b1720"></div>
+        <div class="meta">${escapeHtml(task.title)}</div>
+        <div class="badge" style="background:${hexToRgba(color,0.18)};color:${color}">est ${task.est_time}m</div>
+      </div>
+      <div class="note">${escapeHtml(task.note)}</div>
+    </div>
+  `;
+  li.style.borderLeft = `6px solid ${hexToRgba(color,0.18)}`;
+  return li;
+}
+
+function hexToRgba(hex, alpha){
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16);
+  const g = parseInt(h.substring(2,4),16);
+  const b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function renderInitialList() {
+  taskListEl.innerHTML = '';
+  const sorted = TASKS.slice().sort((a,b)=>a.ideal_rank - b.ideal_rank);
+  for(const t of sorted) taskListEl.appendChild(createTaskItem(t));
+  updateTaskIndices();
+}
+
+/* update visible index numbers next to tasks */
+function updateTaskIndices(){
+  const items = taskListEl.querySelectorAll('.task');
+  items.forEach((it, idx) => {
+    const idxBox = it.querySelector('.taskIndex');
+    idxBox.textContent = (idx+1);
+  });
+}
+
+/* build ideal order box contents */
+function renderIdealOrder(){
+  const sorted = TASKS.slice().sort((a,b)=>a.ideal_rank - b.ideal_rank);
+  idealOrderBox.innerHTML = sorted.map(t=>`<div style="padding:8px 0"><b>${t.ideal_rank}.</b> ${escapeHtml(t.title)} <div class="small" style="color:#475569">${escapeHtml(t.note)}</div></div>`).join('');
+}
+
+/* Escape HTML */
+function escapeHtml(s){
+  return (s||'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------- SortableJS init ---------- */
+const sortable = new Sortable(taskListEl, {
+  animation: 160,
+  handle: '.handle',
+  onUpdate: updateTaskIndices
+});
+
+/* ---------- Scoring & Feedback ---------- */
+function computeResults(){
+  const items = Array.from(taskListEl.querySelectorAll('.task'));
+  const userOrder = items.map((it, idx) => ({ id: Number(it.dataset.id), user_rank: idx+1 }));
+  const idealMap = {};
+  TASKS.forEach(t => idealMap[t.id] = t.ideal_rank);
+
+  let total_distance = 0;
+  const perTask = userOrder.map(u => {
+    const ideal = idealMap[u.id];
+    const dist = Math.abs(u.user_rank - ideal);
+    total_distance += dist;
+    const taskInfo = TASKS.find(t=>t.id===u.id);
+    return { id:u.id, title:taskInfo.title, note:taskInfo.note, ideal_rank:ideal, user_rank:u.user_rank, distance:dist };
+  });
+
+  const score = Math.round((1 - (total_distance / MAX_DISTANCE)) * 100);
+  return { score, total_distance, perTask };
+}
+
+function generateFeedback(perTask){
+  const feedback = [];
+  perTask.forEach(p => {
+    let msg = '';
+    if(p.distance === 0) msg = `Good: placed correctly at #${p.user_rank}.`;
+    else if(p.distance === 1) msg = `Acceptable: slightly different (placed #${p.user_rank}, ideal #${p.ideal_rank}).`;
+    else msg = `Problem: placed #${p.user_rank} but ideal is #${p.ideal_rank} — consider moving this earlier/later.`;
+    feedback.push({ id:p.id, title:p.title, user_rank:p.user_rank, ideal_rank:p.ideal_rank, distance:p.distance, msg });
+  });
+
+  const lookup = (id) => perTask.find(x=>x.id===id);
+  const ceo = lookup(1);
+  const bug = lookup(2);
+  const town = lookup(3);
+  const marketing = lookup(5);
+
+  const warnings = [];
+  if(ceo.user_rank > 2) warnings.push({ type:'CEO', text:`High risk: Reply to CEO is placed at #${ceo.user_rank}. This should be handled immediately (ideal #1).` });
+  if(bug.user_rank > 4) warnings.push({ type:'BUG', text:`Customer risk: High-severity bug placed at #${bug.user_rank}. Consider triaging now (ideal #2).` });
+  if(town.user_rank > 4) warnings.push({ type:'TOWN', text:`Town Hall attendance is mandatory — placing it after #4 may cause conflicts with fixed time.` });
+  if(marketing.user_rank > 6) warnings.push({ type:'MK', text:`Marketing copy must be approved before tomorrow — placing it at #${marketing.user_rank} risks missing the deadline.` });
+
+  return { feedback, warnings };
+}
+
+function suggestReorder(perTask){
+  const problematic = perTask.filter(p => p.distance >= 2).sort((a,b)=>b.distance - a.distance).slice(0,5);
+  const suggestions = problematic.map(p => {
+    return { id:p.id, title:p.title, suggested_rank:p.ideal_rank, reason:`Ideal priority #${p.ideal_rank}. ${p.distance} position(s) off.` };
+  });
+  return suggestions;
+}
+
+function renderResults(){
+  const { score, total_distance, perTask } = computeResults();
+  const { feedback, warnings } = generateFeedback(perTask);
+  const suggestions = suggestReorder(perTask);
+
+  let html = `
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="small">Total distance: ${total_distance} / ${MAX_DISTANCE}</div>
+        <div class="small" style="margin-top:6px">Lower distance → closer to ideal order.</div>
+      </div>
+      <div style="text-align:right">
+        <div class="small">Final score</div>
+        <div class="resultScore">${score} / 100</div>
+      </div>
+    </div>
+  `;
+
+  if(warnings.length){
+    html += `<div style="margin-top:12px">`;
+    warnings.forEach(w => {
+      html += `<div class="warn" style="margin-top:8px">⚠️ ${escapeHtml(w.text)}</div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div style="margin-top:12px"><div style="font-weight:700">Per-task feedback</div><div class="feedbackList">`;
+  feedback.forEach(f => {
+    const boxClass = (f.distance === 0) ? 'ok' : (f.distance === 1) ? 'fbCard' : 'warn';
+    html += `<div class="${boxClass}"><b>${escapeHtml(f.title)}</b><div style="margin-top:6px">${escapeHtml(f.msg)}</div><div class="small" style="margin-top:6px;color:#475569">Your rank: ${f.user_rank} • Ideal: ${f.ideal_rank}</div></div>`;
+  });
+  html += `</div></div>`;
+
+  if(suggestions.length){
+    html += `<div style="margin-top:12px"><div style="font-weight:700">Suggested adjustments</div><div class="suggest">`;
+    suggestions.forEach(s => {
+      html += `<div style="margin-bottom:8px"><b>Move to #${s.suggested_rank}:</b> ${escapeHtml(s.title)} <div class="small" style="color:#475569">${escapeHtml(s.reason)}</div></div>`;
+    });
+    html += `</div></div>`;
+  } else {
+    html += `<div style="margin-top:12px" class="ok">Nice — your order is close to the ideal priority order.</div>`;
+  }
+
+  html += `<div style="margin-top:12px"><div style="font-weight:700">Quick tips</div>
+           <ul class="small" style="margin-top:8px">
+             <li>Handle time-sensitive, CEO-level, and customer-impact items first.</li>
+             <li>Schedule fixed-time mandatory meetings early to avoid conflicts.</li>
+             <li>Delegate or postpone optional work when short on time.</li>
+           </ul></div>`;
+
+  resultArea.innerHTML = html;
+  idealDetails.style.display = 'block';
+}
+
+/* ---------- Buttons ---------- */
+document.getElementById('submitBtn').addEventListener('click', ()=>{
+  renderResults();
+  sortable.option('disabled', true);
+  document.getElementById('submitBtn').disabled = true;
+});
+
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  renderInitialList();
+  resultArea.innerHTML = '<div class="mutedText">No submission yet — submit to view your score and feedback.</div>';
+  idealDetails.style.display = 'none';
+  sortable.option('disabled', false);
+  document.getElementById('submitBtn').disabled = false;
+});
+
+document.getElementById('showIdealBtn').addEventListener('click', ()=>{
+  renderIdealOrder();
+  idealDetails.open = true;
+  idealDetails.style.display = 'block';
+});
+
+/* ---------- init ---------- */
+renderInitialList();
+renderIdealOrder();
+</script>
+</body>
+</html>

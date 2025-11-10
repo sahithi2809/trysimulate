@@ -25,6 +25,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "import:simulations": "node ./scripts/importSimulations.js",
+    "deactivate:simulations": "node ./scripts/deactivateSimulations.js"
   }
 }

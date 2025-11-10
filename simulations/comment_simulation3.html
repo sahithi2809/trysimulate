@@ -1,0 +1,216 @@
+<!-- //this is as a test final scores -->
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Comment Reply Simulation - Test Mode</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f5f7fb; }
+    .container { display:flex; height:100vh; gap:12px; padding:16px; box-sizing:border-box; }
+    .left, .center, .right { background:white; border-radius:8px; padding:12px; box-shadow:0 4px 12px rgba(0,0,0,0.06); }
+    .left { width:30%; overflow:auto; }
+    .center { flex:1; display:flex; flex-direction:column; }
+    .right { width:28%; }
+    .comment { padding:10px; border-radius:6px; margin-bottom:10px; background:#f7f9fc; cursor:pointer; border:1px solid #e6eef9; }
+    .selected { background:#e8f3ff; border-color:#bfe0ff; }
+    textarea { width:100%; min-height:120px; padding:8px; font-size:14px; border-radius:6px; border:1px solid #d6dfe8; resize:vertical; }
+    button { padding:10px 12px; border-radius:6px; border:0; background:#2563eb; color:white; cursor:pointer; margin-top:8px; }
+    .muted { color:#6b7280; font-size:13px; }
+    .scoreBox { font-weight:700; font-size:20px; text-align:center; padding:10px; border-radius:8px; background:#f1f8ff; margin-bottom:8px; }
+    .replySaved { color:#065f46; font-weight:600; margin-top:8px; }
+    .resultCard { background:#fff; border-radius:8px; padding:10px; margin-bottom:10px; box-shadow:0 2px 6px rgba(0,0,0,0.04); }
+    .final { font-size:18px; font-weight:700; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Left: comments list -->
+    <div class="left">
+      <h3>Comments (Test)</h3>
+      <div id="commentsList"></div>
+      <div class="muted" style="margin-top:8px">Reply to all comments, then click <b>Submit All Replies</b> on the right.</div>
+    </div>
+
+    <!-- Center: reply editor -->
+    <div class="center">
+      <h3 id="commentTitle">Select a comment</h3>
+      <div id="commentBody" style="padding:12px;border:1px solid #eef2f7; border-radius:6px; background:#fafafa; min-height:90px;"></div>
+
+      <label style="margin-top:12px;font-weight:600;">Your reply</label>
+      <textarea id="replyArea" placeholder="Type your response..."></textarea>
+
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button id="saveBtn">Save Reply</button>
+        <button id="clearBtn" style="background:#ef4444">Clear</button>
+      </div>
+
+      <div id="savedNote" class="replySaved" style="display:none">Reply saved for this comment ✓</div>
+    </div>
+
+    <!-- Right: submit and results -->
+    <div class="right">
+      <div class="scoreBox" id="progressBox">0 / 3 replied</div>
+      <button id="submitAllBtn" style="width:100%; background:#10b981">Submit All Replies</button>
+
+      <div id="resultsArea" style="margin-top:12px"></div>
+
+      <div style="margin-top:12px;">
+        <h4>Scoring rubric (per reply)</h4>
+        <ul style="font-size:14px; color:#374151">
+          <li>Empathy / Tone — 40 pts</li>
+          <li>Resolution / Helpfulness — 40 pts</li>
+          <li>Clarity & Ownership — 20 pts</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+<script>
+const comments = [
+  { id:1, user:"Rina", text:"My order arrived cold. Really disappointed." },
+  { id:2, user:"Amit", text:"Promo code DIDN'T apply. I lost money." },
+  { id:3, user:"Sonal", text:"The app crashed when I tried to pay." }
+];
+
+// store replies here
+const replies = {}; // key: comment id -> { text, saved }
+
+let selectedId = null;
+
+function renderList() {
+  const list = document.getElementById('commentsList');
+  list.innerHTML = '';
+  comments.forEach(c => {
+    const saved = replies[c.id] && replies[c.id].saved;
+    const el = document.createElement('div');
+    el.className = 'comment' + (c.id===selectedId ? ' selected' : '');
+    el.innerHTML = `<b>${c.user}</b><div style="font-size:13px;color:#374151;margin-top:6px">${c.text}</div>
+                    <div style="margin-top:6px;font-size:12px;color:${saved? '#065f46':'#9ca3af'}">${saved? 'Reply saved ✓':'Not replied'}</div>`;
+    el.onclick = ()=> selectComment(c.id);
+    list.appendChild(el);
+  });
+  updateProgress();
+}
+
+function selectComment(id){
+  selectedId = id;
+  renderList();
+  const c = comments.find(x=>x.id===id);
+  document.getElementById('commentTitle').innerText = `From: ${c.user}`;
+  document.getElementById('commentBody').innerText = c.text;
+  document.getElementById('replyArea').value = (replies[id] && replies[id].text) ? replies[id].text : '';
+  document.getElementById('savedNote').style.display = (replies[id] && replies[id].saved) ? 'block' : 'none';
+}
+
+function updateProgress(){
+  const done = Object.values(replies).filter(r=>r.saved).length;
+  document.getElementById('progressBox').innerText = `${done} / ${comments.length} replied`;
+}
+
+function saveReply(){
+  if(!selectedId){ alert('Select a comment first.'); return; }
+  const txt = document.getElementById('replyArea').value.trim();
+  if(txt.length===0){ alert('Please type a reply to save.'); return; }
+  replies[selectedId] = { text: txt, saved: true };
+  document.getElementById('savedNote').style.display = 'block';
+  renderList();
+}
+
+function clearReply(){
+  if(!selectedId){ alert('Select a comment first.'); return; }
+  document.getElementById('replyArea').value = '';
+  delete replies[selectedId];
+  document.getElementById('savedNote').style.display = 'none';
+  renderList();
+}
+
+function scoreText(text){
+  const t = (text||'').toLowerCase();
+  const empathy = /sorry|apolog|understand|disappoint|thank/.test(t) ? 1 : 0;
+  const resolution = /refund|replace|voucher|credit|manual|fix|offer|compensate|arrange|process|we will|i will|ship|send/.test(t) ? 1 : 0;
+  const clarity = /order|id|order id|order number|screenshot|please|confirm|within|24|tomorrow|by|today|i will|we will/.test(t) || t.split(' ').length > 8 ? 1 : 0;
+  const rude = /stupid|idiot|hate|trash|screw/.test(t) ? 1 : 0;
+
+  let total = 0;
+  total += empathy ? 40 : 0;
+  total += resolution ? 40 : 0;
+  total += clarity ? 20 : 0;
+  if(rude) total = Math.max(0, total - 30);
+  return { total, empathy, resolution, clarity, rude };
+}
+
+function submitAll(){
+  // require all replies saved
+  const missing = comments.filter(c => !(replies[c.id] && replies[c.id].saved));
+  if(missing.length){
+    alert(`Please reply to all comments before submitting. Missing: ${missing.map(m=>m.user).join(', ')}`);
+    return;
+  }
+
+  // score each
+  const results = comments.map(c => {
+    const txt = replies[c.id].text;
+    const s = scoreText(txt);
+    return { id: c.id, user: c.user, comment: c.text, reply: txt, score: s.total, details: s };
+  });
+
+  // show results
+  const area = document.getElementById('resultsArea');
+  area.innerHTML = '';
+  let sum = 0;
+  results.forEach(r => {
+    sum += r.score;
+    const card = document.createElement('div');
+    card.className = 'resultCard';
+    card.innerHTML = `<div style="display:flex;justify-content:space-between"><div><b>${r.user}</b></div><div style="font-weight:700">${r.score} / 100</div></div>
+                      <div style="margin-top:8px;color:#374151"><i>Comment:</i> ${r.comment}</div>
+                      <div style="margin-top:8px;"><i>Your reply:</i><div style="margin-top:6px;padding:8px;border-radius:6px;background:#f8fafc">${escapeHtml(r.reply)}</div></div>
+                      <div style="margin-top:8px;font-size:14px;color:#111">${generateFeedbackText(r.details).map(x=>'<div>• '+x+'</div>').join('')}</div>`;
+    area.appendChild(card);
+  });
+
+  const avg = Math.round(sum / results.length);
+  const final = document.createElement('div');
+  final.className = 'final';
+  final.innerHTML = `<div style="margin-top:8px">Final average score: <b>${avg} / 100</b></div>
+                     <div style="margin-top:8px;color:#374151">Quick tips: Start with empathy, offer a clear fix or next step, ask for needed details, sign off with ownership.</div>`;
+  area.prepend(final);
+
+  // prevent further edits (optional)
+  document.getElementById('saveBtn').disabled = true;
+  document.getElementById('clearBtn').disabled = true;
+  document.getElementById('replyArea').disabled = true;
+  document.getElementById('submitAllBtn').disabled = true;
+}
+
+function generateFeedbackText(details){
+  const fb = [];
+  if(details.empathy) fb.push("Shows empathy / acknowledgment.");
+  else fb.push("Missing empathy — consider an apology or acknowledgment.");
+
+  if(details.resolution) fb.push("Provides or offers a concrete resolution or next step.");
+  else fb.push("No clear resolution — offer refund/replacement/workaround or request more info.");
+
+  if(details.clarity) fb.push("Clear next steps or asks for required info.");
+  else fb.push("Could be clearer — add expected timelines or request order details.");
+
+  if(details.rude) fb.push("Avoid negative or harsh language.");
+  return fb;
+}
+
+function escapeHtml(text) {
+  return text.replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+// UI hooks
+document.getElementById('saveBtn').addEventListener('click', saveReply);
+document.getElementById('clearBtn').addEventListener('click', clearReply);
+document.getElementById('submitAllBtn').addEventListener('click', submitAll);
+
+// init
+renderList();
+selectComment(comments[0].id);
+</script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Sales Negotiation - Test: Price Pushback</title>
+  <style>
+    body{font-family:Inter,Arial,Helvetica,sans-serif;background:#f5f7fb;margin:0;padding:18px}
+    .app{max-width:980px;margin:0 auto;display:grid;grid-template-columns:1fr 430px;gap:16px}
+    .card{background:#fff;border-radius:10px;padding:18px;box-shadow:0 6px 18px rgba(10,20,40,0.06)}
+    h2{margin:0 0 8px 0;font-size:20px}
+    .meta{color:#6b7280;font-size:13px;margin-bottom:10px}
+    .email{border-radius:8px;background:#f8fafc;padding:12px;border:1px solid #e6eef9;color:#111}
+    textarea{width:100%;min-height:180px;padding:10px;border-radius:8px;border:1px solid #d6dfe8;font-size:14px;resize:vertical}
+    button{padding:10px 14px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
+    .primary{background:#0ea5a4;color:white}
+    .muted{background:#eef2f7;color:#0f172a}
+    .result{margin-top:12px}
+    .bar{height:10px;background:#e6eef9;border-radius:999px;overflow:hidden}
+    .fill{height:100%;background:#60a5fa}
+    .scoreBig{font-size:28px;font-weight:800;margin-top:8px}
+    .feedback{background:#fff7ed;border:1px solid #ffedd5;padding:10px;border-radius:8px;margin-top:8px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .hint{font-size:13px;color:#6b7280;margin-top:8px}
+    pre{background:#0f172a;color:#fff;padding:10px;border-radius:6px;white-space:pre-wrap}
+    .mutedText{color:#6b7280;font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- LEFT: scenario + reply editor -->
+    <div class="card">
+      <h2>Scenario — Price Negotiation (SaaS small business)</h2>
+      <div class="meta">You pitched a collaboration SaaS to an early-stage startup. After demo, buyer asks for 30% discount. Write a reply that protects value while moving toward a close.</div>
+
+      <div style="margin-top:10px">
+        <div style="font-weight:700;margin-bottom:8px">Buyer email</div>
+        <div class="email">
+          <div style="font-weight:700">From: Rahul — Head of Ops, AcmeStartup</div>
+          <div style="margin-top:6px;color:#374151">
+            Thanks for the demo — product looks useful. However, your quoted annual price is above our budget.
+            Can you do a 30% discount for our startup? If not, we may need to consider other options.
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px">
+        <div style="font-weight:700;margin-bottom:6px">Your reply</div>
+        <textarea id="replyTxt" placeholder="Write your negotiation reply here..."></textarea>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="submitBtn" class="primary">Submit Reply</button>
+          <button id="resetBtn" class="muted">Reset</button>
+        </div>
+        <div class="hint">Focus on: empathy, reinforce key value, offer alternatives (pilot/terms), and close with a clear next step.</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: initial minimal panel; will show scoring + behind-the-scenes after submit -->
+    <div class="card">
+      <h2 id="rightTitle">Scoring & Feedback</h2>
+      <div id="rightBody">
+        <div class="mutedText">No reply submitted yet. Your scoring and suggested behind-the-scenes actions will appear here after you submit your reply.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // scoring keywords & logic
+  const WEIGHTS = { empathy:25, value:30, alternatives:30, closing:15 };
+
+  const KW = {
+    empathy: ['thanks','thank you','appreciate','understand','i appreciate','sorry','glad','happy to hear','great to hear'],
+    value: ['roi','return on','outcome','saves','save','time','efficiency','productivity','uptime','support','integration','reduce cost','value','benefit','results'],
+    alternatives: ['pilot','trial','6-month','6 month','6 months','12-month','12 month','12 months','commit','commitment','startup discount','discount','phased','phased rollout','limited','seat','seats','tier','bundle','option','lower price','pay monthly','monthly'],
+    closing: ['call','jump on','shall i','shall we','which option','which would work','finalise','finalize','sign','ready to move','next step','let me know','confirm','send updated quote','i can send']
+  };
+
+  function ratioMatches(text, keywords){
+    const t = (text||'').toLowerCase();
+    if(!t) return 0;
+    let hits = 0;
+    for(const k of keywords){
+      if(t.includes(k)) hits++;
+    }
+    return Math.min(1, hits / keywords.length);
+  }
+
+  function hasUnconditionalLargeDiscount(text){
+    const t = (text||'').toLowerCase();
+    const discountPattern = /\b(30%|30 percent|30 percent off|30% off|50%|50 percent|50% off)\b/;
+    if(!discountPattern.test(t)) return false;
+    const conditionWords = ['if','commit','commitment','sign','for 12','for 6','on 12','on 6','with a','subject to','upon','when you','if you'];
+    for(const c of conditionWords) {
+      if(t.includes(c)) return false;
+    }
+    return true;
+  }
+
+  document.getElementById('submitBtn').addEventListener('click', ()=> {
+    const txt = document.getElementById('replyTxt').value.trim();
+    if(!txt){
+      alert('Please write your negotiation reply before submitting.');
+      return;
+    }
+
+    const empathyRatio = ratioMatches(txt, KW.empathy);
+    const valueRatio = ratioMatches(txt, KW.value);
+    let altRatio = ratioMatches(txt, KW.alternatives);
+    const closingRatio = ratioMatches(txt, KW.closing);
+
+    const condKeywords = ['if you commit','if you sign','commit to','12 months','6 months','for 12 months','for 6 months','pilot','trial','pilot for'];
+    let condFound = false;
+    for(const c of condKeywords) if(txt.toLowerCase().includes(c)) condFound = true;
+    if(condFound) altRatio = Math.min(1, altRatio * 1.2);
+
+    const unconditionalDiscount = hasUnconditionalLargeDiscount(txt);
+    if(unconditionalDiscount) altRatio = Math.max(0, altRatio - 0.35);
+
+    const empathyScore = Math.round(WEIGHTS.empathy * empathyRatio);
+    const valueScore = Math.round(WEIGHTS.value * valueRatio);
+    const altScore = Math.round(WEIGHTS.alternatives * altRatio);
+    const closingScore = Math.round(WEIGHTS.closing * closingRatio);
+    let finalTotal = empathyScore + valueScore + altScore + closingScore;
+    finalTotal = Math.max(0, Math.min(100, finalTotal));
+
+    const feedback = [];
+    if(empathyRatio > 0.4) feedback.push('Good empathy — you acknowledged their concern or thanked them.');
+    else feedback.push('Missing or weak empathy — start with recognition of their budget concern (e.g., "I appreciate your honesty / I understand budget pressure").');
+
+    if(valueRatio > 0.3) feedback.push('You reinforced value — you linked product features to outcomes/ROI for their business.');
+    else feedback.push('Value reinforcement is missing — reiterate the most relevant outcomes you deliver (time saved, efficiency, ROI).');
+
+    if(altRatio > 0.4) {
+      if(unconditionalDiscount) feedback.push('You offered a discount but it appeared unconditional — prefer conditional concessions (e.g., 15% for 12-month commitment or a 6-month pilot).');
+      else feedback.push('Good — you proposed alternatives (pilot, shorter term, limited seats, startup discount) which protect margin while moving the deal forward.');
+    } else {
+      feedback.push('No strong alternative offer — suggest conditional concessions (e.g., smaller discount for a longer commitment, a 6-month pilot, or a limited-feature bundle).');
+    }
+
+    if(closingRatio > 0.3) feedback.push('Nice close / next step — you asked for a decision or offered a call/updated quote.');
+    else feedback.push('Missing a clear call-to-action — close with a next-step (which option works, shall I send an updated quote, 10-min call to finalise).');
+
+    // render results + behind-the-scenes actions
+    const area = document.getElementById('rightBody');
+    area.innerHTML = `
+      <div style="margin-bottom:8px"><b>Per-competency scores</b></div>
+      <div style="margin-bottom:8px">Empathy — <b>${empathyScore} / ${WEIGHTS.empathy}</b>
+        <div class="bar" style="margin-top:6px"><div class="fill" style="width:${Math.round((empathyScore/WEIGHTS.empathy)*100)}%"></div></div>
+      </div>
+      <div style="margin-top:8px">Value reinforcement — <b>${valueScore} / ${WEIGHTS.value}</b>
+        <div class="bar" style="margin-top:6px"><div class="fill" style="width:${Math.round((valueScore/WEIGHTS.value)*100)}%"></div></div>
+      </div>
+      <div style="margin-top:8px">Alternatives / creativity — <b>${altScore} / ${WEIGHTS.alternatives}</b>
+        <div class="bar" style="margin-top:6px"><div class="fill" style="width:${Math.round((altScore/WEIGHTS.alternatives)*100)}%"></div></div>
+      </div>
+      <div style="margin-top:8px">Closing / next step — <b>${closingScore} / ${WEIGHTS.closing}</b>
+        <div class="bar" style="margin-top:6px"><div class="fill" style="width:${Math.round((closingScore/WEIGHTS.closing)*100)}%"></div></div>
+      </div>
+
+      <div class="scoreBig">${finalTotal} / 100</div>
+
+      <div class="feedback"><b>Feedback</b><br>${feedback.map(f => `<div style="margin-top:6px">• ${f}</div>`).join('')}</div>
+
+      <div style="margin-top:12px">
+        <div style="font-weight:700;margin-bottom:6px">Behind-the-scenes actions</div>
+        <ul style="font-size:13px;color:#374151">
+          <li>Prepare two updated quotes: (A) 15% startup discount for 12-month commitment; (B) 6-month pilot pricing for two teams with success metrics.</li>
+          <li>Gather 1–2 quick ROI examples from the demo (e.g., time saved, meeting reduction) tailored to AcmeStartup.</li>
+          <li>If buyer accepts one option, update the contract with conditional clauses and hand off to Customer Success for pilot tracking.</li>
+          <li>Track internal KPIs: expected ARR, discount impact, and pilot success metrics to decide on full pricing adjustments.</li>
+        </ul>
+      </div>
+
+      <div style="margin-top:12px">
+        <div style="font-weight:700">Suggested interviewer talking points</div>
+        <ul style="font-size:13px;color:#374151">
+          <li>Explain why conditional concessions preserve margin and drive commitment.</li>
+          <li>Mention you'd leverage tailored ROI examples to justify price vs competitor offers.</li>
+          <li>Offer a clear next step: send updated quote or 10-min call to finalise.</li>
+        </ul>
+      </div>
+    `;
+
+    // disable editing to simulate test submission
+    document.getElementById('replyTxt').disabled = true;
+    document.getElementById('submitBtn').disabled = true;
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', ()=> {
+    document.getElementById('replyTxt').value = '';
+    document.getElementById('replyTxt').disabled = false;
+    document.getElementById('submitBtn').disabled = false;
+    document.getElementById('rightBody').innerHTML = '<div class="mutedText">No reply submitted yet. Your scoring and suggested behind-the-scenes actions will appear here after you submit your reply.</div>';
+  });
+</script>
+</body>
+</html>
