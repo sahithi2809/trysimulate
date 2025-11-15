@@ -21,12 +21,38 @@ const BrowseSimulations = () => {
         const dbSimulations = await databaseService.getAllSimulations();
         console.log('✅ Loaded simulations from database:', dbSimulations.length);
         
-        setSimulations(dbSimulations);
+        // Add Noah simulation (task-based demo)
+        const noahSimulation = {
+          id: 'noah-demo',
+          title: 'Noah Smart Fitness Watch - Product Management',
+          description: 'End-to-end product management simulation: from market research to post-launch analytics. Practice real PM skills with 7 comprehensive tasks.',
+          category: 'Product Management',
+          difficulty: 'Intermediate',
+          duration: '6-8 hours',
+          is_ai_generated: false,
+          isDefault: false,
+          isTaskBased: true // Flag to identify task-based simulation
+        };
+        
+        // Combine Noah simulation with database results (Noah first)
+        setSimulations([noahSimulation, ...dbSimulations]);
         
       } catch (err) {
         console.error('❌ Error loading from database:', err);
         setError('Failed to load simulations. Please refresh the page.');
-        setSimulations([]);
+        // Still show Noah simulation even if DB fails
+        const noahSimulation = {
+          id: 'noah-demo',
+          title: 'Noah Smart Fitness Watch - Product Management',
+          description: 'End-to-end product management simulation: from market research to post-launch analytics. Practice real PM skills with 7 comprehensive tasks.',
+          category: 'Product Management',
+          difficulty: 'Intermediate',
+          duration: '6-8 hours',
+          is_ai_generated: false,
+          isDefault: false,
+          isTaskBased: true
+        };
+        setSimulations([noahSimulation]);
       } finally {
         setLoading(false);
       }
@@ -60,6 +86,10 @@ const BrowseSimulations = () => {
   };
 
   const getSimulationPath = (sim) => {
+    // Task-based simulation (Noah demo) - goes to landing page
+    if (sim.isTaskBased || sim.id === 'noah-demo') {
+      return '/demosimulation';
+    }
     // All database simulations are HTML-based AI-generated
     if (sim.is_ai_generated || sim.html_content) {
       return `/simulation/html/${sim.id}`;
@@ -69,6 +99,10 @@ const BrowseSimulations = () => {
   };
 
   const getTypeIcon = (sim) => {
+    // Task-based simulation (Noah)
+    if (sim.isTaskBased || sim.id === 'noah-demo') {
+      return '🏥';
+    }
     // All database simulations are AI-generated
     if (sim.is_ai_generated) {
       return '🤖';

@@ -16,6 +16,8 @@ import UniversalHTMLSimulationRenderer from './components/UniversalHTMLSimulatio
 import AuthPage from './pages/AuthPage';
 import AuthCallback from './pages/AuthCallback';
 import CompleteProfile from './pages/CompleteProfile';
+import DemoSimulation from './pages/DemoSimulation';
+import DemoSimulationLanding from './pages/DemoSimulationLanding';
 
 function App() {
   return (
@@ -36,6 +38,8 @@ function App() {
             <Route path="/simulation/team-conflict/:id" element={<><Navbar /><TeamConflictSimulation /></>} />
             <Route path="/simulation/custom/:id" element={<><Navbar /><UniversalSimulationRenderer /></>} />
             <Route path="/simulation/html/:id" element={<><Navbar /><UniversalHTMLSimulationRenderer /></>} />
+            <Route path="/demosimulation" element={<DemoSimulationLanding />} />
+            <Route path="/demosimulation/start" element={<DemoSimulation />} />
           </Routes>
         </div>
       </Router>
