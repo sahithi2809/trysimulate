@@ -27,6 +27,10 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
     "import:simulations": "node ./scripts/importSimulations.js",
-    "deactivate:simulations": "node ./scripts/deactivateSimulations.js"
+    "deactivate:simulations": "node ./scripts/deactivateSimulations.js",
+    "clone:prod-to-dev": "node ./scripts/cloneProdToDev.js",
+    "clone:schema-only": "node ./scripts/cloneProdToDev.js",
+    "apply:policies-indexes": "node ./scripts/apply-policies-indexes.js",
+    "compare:prod-dev": "node ./scripts/compare-prod-dev.js"
   }
 }

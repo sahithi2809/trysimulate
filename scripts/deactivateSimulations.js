@@ -6,14 +6,13 @@ const REQUIRED_TITLES = [
   'Customer Comment Response Simulation',
 ]
 
-const SUPABASE_URL =
-  process.env.SUPABASE_URL ||
-  process.env.VITE_SUPABASE_URL ||
-  'https://iryabjeigjtwditxfnfh.supabase.co'
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  console.error('❌ Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY before running this script.')
+  console.error(
+    '❌ Missing Supabase credentials. Set SUPABASE_URL (or VITE_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY before running this script.'
+  )
   process.exit(1)
 }
 

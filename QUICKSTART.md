@@ -16,6 +16,9 @@ This will install all required packages (React, Tailwind CSS, React Router, Sort
 npm run dev
 ```
 
+> 💡 By default this uses the credentials in `.env.development` / `.env.development.local`.  
+> See `DEV_SETUP.md` if you need to wire it up to a separate Supabase dev project.
+
 The app will start at `http://localhost:3000`
 
 ## Step 3: Explore the Platform

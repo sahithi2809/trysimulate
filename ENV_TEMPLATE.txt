@@ -1,10 +1,33 @@
-# Copy this to .env file in the root of CODEBASE directory
+# ──────────────────────────────────────────────────────────────────────────────
+# Environment configuration template
+# ──────────────────────────────────────────────────────────────────────────────
+# Copy the relevant sections into:
+#   • .env.development.local  (dev project credentials)
+#   • .env.production.local   (prod project credentials)
+# Vite will automatically pick the correct file based on the command you run.
+# Never commit real keys back to the repo.
+# ──────────────────────────────────────────────────────────────────────────────
 
-# OpenAI API Key (already hardcoded in aiService.js for production)
-VITE_OPENAI_API_KEY=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
+# --- Shared config ------------------------------------------------------------
+# If you re-enable OpenAI, add your project key here (not required for Supabase)
+# VITE_OPENAI_API_KEY=sk-...
 
-# Supabase Configuration
-# Get these from: https://supabase.com → Your Project → Settings → API
-VITE_SUPABASE_URL=your_supabase_project_url_here
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_public_key_here
+# --- Supabase (Frontend) ------------------------------------------------------
+# Get these from Supabase → Project → Settings → API
+# Development project
+VITE_SUPABASE_URL=https://YOUR_DEV_PROJECT.supabase.co
+VITE_SUPABASE_ANON_KEY=dev-anon-key
+
+# Production project
+# VITE_SUPABASE_URL=https://YOUR_PROD_PROJECT.supabase.co
+# VITE_SUPABASE_ANON_KEY=prod-anon-key
+
+# --- Supabase (Service role for scripts) --------------------------------------
+# Only needed for Node scripts (importSimulations, deactivateSimulations, etc.)
+# export SUPABASE_URL=https://YOUR_DEV_PROJECT.supabase.co
+# export SUPABASE_SERVICE_ROLE_KEY=dev-service-role
+
+# export SUPABASE_URL=https://YOUR_PROD_PROJECT.supabase.co
+# export SUPABASE_SERVICE_ROLE_KEY=prod-service-role
+
 
