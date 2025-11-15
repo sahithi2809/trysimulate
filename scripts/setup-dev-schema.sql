@@ -117,3 +117,4 @@ CREATE INDEX IF NOT EXISTS idx_user_activity_created_at ON user_activity(created
 ALTER TABLE user_activity ENABLE ROW LEVEL SECURITY;
 
 
+

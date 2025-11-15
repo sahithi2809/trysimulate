@@ -240,3 +240,4 @@ The error `"new row violates row-level security policy for table user_profiles"`
 **Fix:** Run `CODEBASE/scripts/sync-user-profiles-from-prod.sql` in your DEV Supabase Dashboard to match production exactly.
 
 
+
