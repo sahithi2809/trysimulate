@@ -18,6 +18,7 @@ import AuthCallback from './pages/AuthCallback';
 import CompleteProfile from './pages/CompleteProfile';
 import DemoSimulation from './pages/DemoSimulation';
 import DemoSimulationLanding from './pages/DemoSimulationLanding';
+import SimulationDetails from './pages/SimulationDetails';
 
 function App() {
   return (
@@ -40,6 +41,9 @@ function App() {
             <Route path="/simulation/html/:id" element={<><Navbar /><UniversalHTMLSimulationRenderer /></>} />
             <Route path="/demosimulation" element={<DemoSimulationLanding />} />
             <Route path="/demosimulation/start" element={<DemoSimulation />} />
+            <Route path="/simulation/:slug" element={<DemoSimulationLanding />} />
+            <Route path="/simulation/:slug/start" element={<DemoSimulation />} />
+            <Route path="/creator/simulation/:id" element={<><Navbar /><SimulationDetails /></>} />
           </Routes>
         </div>
       </Router>

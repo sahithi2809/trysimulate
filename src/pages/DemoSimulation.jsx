@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Task0Intro from '../components/task-based/Task0Intro';
 import Task1MarketResearch from '../components/task-based/Task1MarketResearch';
 import Task2TeamComposition from '../components/task-based/Task2TeamComposition';
@@ -8,40 +8,217 @@ import Task4Wireframe from '../components/task-based/Task4Wireframe';
 import Task5GTM from '../components/task-based/Task5GTM';
 import Task6Analytics from '../components/task-based/Task6Analytics';
 import Task7Final from '../components/task-based/Task7Final';
+import TaskMCQ from '../components/task-based/TaskMCQ';
+import TaskShortText from '../components/task-based/TaskShortText';
+import TaskReflection from '../components/task-based/TaskReflection';
+import TaskDecisionLoop from '../components/task-based/TaskDecisionLoop';
 import FinalReportCard from '../components/task-based/FinalReportCard';
-import { getProgress, isAllTasksComplete } from '../utils/demoStorage';
+import { getProgress, isAllTasksComplete, getAllTaskData, saveTaskData, markTaskComplete } from '../utils/demoStorage';
 import { companyInfo } from '../data/demoSimulationData';
+import { taskBasedService } from '../services/taskBasedService';
+
+// Helper to get simulation slug for storage keys
+const getSimulationSlug = (simulation) => {
+  return simulation?.slug || 'noah-smart-fitness-watch';
+};
 
 const DemoSimulation = () => {
+  const { slug } = useParams(); // Get simulation slug from URL
+  const [simulation, setSimulation] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
+  const [simulationId, setSimulationId] = useState(null);
   const [currentTask, setCurrentTask] = useState(0);
-  const [progress, setProgress] = useState(getProgress());
+  const [progress, setProgress] = useState(null);
   const [showFinalReport, setShowFinalReport] = useState(false);
+  const [usingBackend, setUsingBackend] = useState(false);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Load simulation and initialize session
   useEffect(() => {
-    const progressData = getProgress();
-    setProgress(progressData);
-    if (isAllTasksComplete() && currentTask === 7) {
-      // Can show final report
-    }
-  }, [currentTask]);
+    const initializeSimulation = async () => {
+      try {
+        setLoading(true);
+        
+        // Default to Noah simulation if no slug (backward compatibility)
+        const simulationSlug = slug || 'noah-smart-fitness-watch';
+        
+        // Try to load from backend
+        try {
+          const sim = await taskBasedService.getSimulationBySlug(simulationSlug);
+          
+          if (sim) {
+            setSimulation(sim);
+            setSimulationId(sim.id);
+            
+            // Try to start/resume session
+            try {
+              // Check for existing active session
+              const existingSession = await taskBasedService.resumeSession(sim.id);
+              
+              if (existingSession) {
+                setSessionId(existingSession.session.id);
+                setProgress(existingSession.progress);
+                setUsingBackend(true);
+              } else {
+                // Start new session
+                const { session, progress: progressData } = await taskBasedService.startSession(sim.id);
+                setSessionId(session.id);
+                setProgress(progressData);
+                setUsingBackend(true);
+              }
+            } catch (sessionError) {
+              console.warn('Failed to start session, using localStorage:', sessionError);
+              // Fallback to localStorage
+              const slug = getSimulationSlug(sim);
+              setProgress(getProgress(slug));
+              setUsingBackend(false);
+            }
+          } else {
+            console.warn('Simulation not found in database, using localStorage');
+            const slug = getSimulationSlug(null);
+            setProgress(getProgress(slug));
+            setUsingBackend(false);
+          }
+        } catch (backendError) {
+          console.warn('Backend not available, using localStorage:', backendError);
+          // Fallback to localStorage
+          const slug = getSimulationSlug(null);
+          setProgress(getProgress(slug));
+          setUsingBackend(false);
+        }
+      } catch (error) {
+        console.error('Error initializing simulation:', error);
+        // Fallback to localStorage
+        const slug = getSimulationSlug(null);
+        setProgress(getProgress(slug));
+        setUsingBackend(false);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const tasks = [
-    { id: 'task0', name: 'Introduction', component: Task0Intro, time: '5 min', icon: '📋' },
-    { id: 'task1', name: 'Market Research', component: Task1MarketResearch, time: '60-90 min', icon: '🔍' },
-    { id: 'task2', name: 'Team & Tech Stack', component: Task2TeamComposition, time: '30-45 min', icon: '👥' },
-    { id: 'task3', name: 'Roadmap & Phases', component: Task3Roadmap, time: '30-45 min', icon: '🗺️' },
-    { id: 'task4', name: 'Wireframe Design', component: Task4Wireframe, time: '30-60 min', icon: '🎨' },
-    { id: 'task5', name: 'GTM Strategy', component: Task5GTM, time: '45-60 min', icon: '🚀' },
-    { id: 'task6', name: 'Post-Launch Analytics', component: Task6Analytics, time: '60-90 min', icon: '📊' },
-    { id: 'task7', name: 'Final Submission', component: Task7Final, time: '30-45 min', icon: '✅' }
-  ];
+    initializeSimulation();
+  }, [slug]);
 
-  const handleTaskComplete = (taskId) => {
-    const newProgress = getProgress();
-    setProgress(newProgress);
-    if (isAllTasksComplete() && taskId === 'task7') {
-      setShowFinalReport(true);
+  // Map task types to components
+  const taskComponentMap = {
+    'intro': Task0Intro,
+    'multi-text-input': Task1MarketResearch,
+    'multi-select-form': Task2TeamComposition,
+    'roadmap': Task3Roadmap,
+    'wireframe': Task4Wireframe,
+    'gtm-strategy': Task5GTM,
+    'analytics-dashboard': Task6Analytics,
+    'final-submission': Task7Final,
+    // Argo task types
+    'mcq': TaskMCQ,
+    'short-text': TaskShortText,
+    'reflection': TaskReflection,
+    // Persona simulation task type
+    'decision-loop': TaskDecisionLoop
+  };
+
+  // Get tasks from simulation or use default (only if simulation is not loaded)
+  const tasks = simulation?.tasks && simulation.tasks.length > 0
+    ? simulation.tasks.map(task => ({
+        id: task.id,
+        name: task.name,
+        component: taskComponentMap[task.type] || Task0Intro,
+        time: task.estimated_time || 'N/A',
+        icon: task.icon || '📋'
+      }))
+    : [
+        // Fallback to Noah tasks only if simulation is not loaded
+        { id: 'task0', name: 'Introduction', component: Task0Intro, time: '5 min', icon: '📋' },
+        { id: 'task1', name: 'Market Research', component: Task1MarketResearch, time: '60-90 min', icon: '🔍' },
+        { id: 'task2', name: 'Team & Tech Stack', component: Task2TeamComposition, time: '30-45 min', icon: '👥' },
+        { id: 'task3', name: 'Roadmap & Phases', component: Task3Roadmap, time: '30-45 min', icon: '🗺️' },
+        { id: 'task4', name: 'Wireframe Design', component: Task4Wireframe, time: '30-60 min', icon: '🎨' },
+        { id: 'task5', name: 'GTM Strategy', component: Task5GTM, time: '45-60 min', icon: '🚀' },
+        { id: 'task6', name: 'Post-Launch Analytics', component: Task6Analytics, time: '60-90 min', icon: '📊' },
+        { id: 'task7', name: 'Final Submission', component: Task7Final, time: '30-45 min', icon: '✅' }
+      ];
+
+  const handleTaskComplete = async (taskId) => {
+    try {
+      console.log(`✅ Task ${taskId} completed. Using backend: ${usingBackend}, Simulation ID: ${simulationId}, Session ID: ${sessionId}`);
+      
+      if (usingBackend && simulationId && sessionId) {
+        // Get task data from localStorage (components still use it temporarily)
+        const slug = getSimulationSlug(simulation);
+        const allTaskData = getAllTaskData(slug);
+        const taskData = allTaskData[taskId] || {};
+
+        console.log(`💾 Saving task submission for ${taskId}...`);
+
+        // Save to backend
+        try {
+          await taskBasedService.saveTaskSubmission(
+            simulationId,
+            sessionId,
+            taskId,
+            taskData
+          );
+          console.log(`✅ Task submission saved successfully for ${taskId}`);
+        } catch (saveError) {
+          console.error(`❌ Error saving task submission for ${taskId}:`, saveError);
+          throw saveError; // Re-throw to trigger fallback
+        }
+
+        // Refresh progress from backend
+        console.log(`🔄 Refreshing progress...`);
+        const updatedProgress = await taskBasedService.getProgress(simulationId, sessionId);
+        if (updatedProgress) {
+          console.log(`📊 Updated progress:`, {
+            completed_tasks: updatedProgress.completed_tasks?.length || 0,
+            progress_percentage: updatedProgress.progress_percentage,
+            completed_at: updatedProgress.completed_at || 'NOT SET'
+          });
+          setProgress(updatedProgress);
+          
+          // Check if all tasks complete
+          const totalTasks = tasks.filter(t => t.id !== 'task0').length;
+          const completedCount = updatedProgress.completed_tasks?.length || 0;
+          console.log(`📋 Progress check: ${completedCount}/${totalTasks} tasks completed`);
+          
+          if (completedCount >= totalTasks) {
+            console.log(`🎉 All tasks completed! Showing final report.`);
+            if (!updatedProgress.completed_at) {
+              console.warn(`⚠️ All tasks done but completed_at is not set. This should be set by updateProgress.`);
+            }
+            setShowFinalReport(true);
+          }
+        } else {
+          console.warn(`⚠️ Could not fetch updated progress`);
+        }
+      } else {
+        console.log(`📦 Using localStorage fallback (backend not available or not authenticated)`);
+        // Fallback to localStorage
+        const slug = getSimulationSlug(simulation);
+        markTaskComplete(taskId, slug);
+        const newProgress = getProgress(slug);
+        setProgress(newProgress);
+        // Check completion based on simulation's tasks
+        const totalTasks = tasks.filter(t => t.id !== 'task0').length;
+        const requiredTasks = tasks.filter(t => t.id !== 'task0').map(t => t.id);
+        if (isAllTasksComplete(slug, requiredTasks) && currentTask === tasks.length - 1) {
+          console.log(`🎉 All tasks completed (localStorage)!`);
+          setShowFinalReport(true);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to save task completion:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details
+      });
+      // Fallback to localStorage on error
+      const slug = getSimulationSlug(simulation);
+      markTaskComplete(taskId, slug);
+      const newProgress = getProgress(slug);
+      setProgress(newProgress);
     }
   };
 
@@ -61,13 +238,40 @@ const DemoSimulation = () => {
     setCurrentTask(index);
   };
 
-  const CurrentTaskComponent = tasks[currentTask].component;
+  const CurrentTaskComponent = tasks[currentTask]?.component || Task0Intro;
 
-  if (showFinalReport) {
-    return <FinalReportCard onClose={() => setShowFinalReport(false)} />;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="text-lg text-gray-600">Loading simulation...</div>
+        </div>
+      </div>
+    );
   }
 
-  const progressPercentage = (progress.completedTasks.length / 7) * 100;
+  if (showFinalReport) {
+    return (
+      <FinalReportCard 
+        onClose={() => setShowFinalReport(false)} 
+        simulation={simulation}
+        sessionId={sessionId}
+        simulationId={simulationId}
+        usingBackend={usingBackend}
+      />
+    );
+  }
+
+  // Calculate progress percentage
+  const completedTasks = usingBackend && progress?.completed_tasks 
+    ? progress.completed_tasks.length 
+    : (progress?.completedTasks?.length || 0);
+  const totalTasks = tasks.filter(t => t.id !== 'task0').length;
+  const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+  
+  // Get company info from simulation or fallback
+  const currentCompanyInfo = simulation?.company_info || companyInfo;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex">
@@ -76,11 +280,11 @@ const DemoSimulation = () => {
         <div className="p-6 border-b-2 border-gray-200 bg-gradient-to-r from-primary to-accent text-white">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-2xl">
-              {companyInfo.logo}
+              {currentCompanyInfo.logo || '🏢'}
             </div>
             <div>
-              <h2 className="text-xl font-bold">{companyInfo.name}</h2>
-              <p className="text-xs text-blue-100">Smart Fitness Watch</p>
+              <h2 className="text-xl font-bold">{currentCompanyInfo.name || simulation?.title || 'Simulation'}</h2>
+              <p className="text-xs text-blue-100">{simulation?.description?.substring(0, 30) || 'Task-based simulation'}</p>
             </div>
           </div>
         </div>
@@ -89,7 +293,10 @@ const DemoSimulation = () => {
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4 px-2">Tasks</div>
           <div className="space-y-2">
             {tasks.map((task, index) => {
-              const isComplete = progress.completedTasks.includes(task.id);
+              const completedTasks = usingBackend && progress?.completed_tasks 
+                ? progress.completed_tasks 
+                : (progress?.completedTasks || []);
+              const isComplete = completedTasks.includes(task.id);
               const isActive = index === currentTask;
               
               return (
@@ -141,7 +348,7 @@ const DemoSimulation = () => {
             />
           </div>
           <div className="text-xs text-gray-600 font-medium">
-            {progress.completedTasks.length} of 7 tasks completed
+            {completedTasks} of {totalTasks} tasks completed
           </div>
         </div>
       </div>
@@ -176,7 +383,7 @@ const DemoSimulation = () => {
               >
                 Exit Simulation
               </button>
-              {isAllTasksComplete() && currentTask === 7 && (
+              {((usingBackend && progress?.completed_at) || (!usingBackend && isAllTasksComplete())) && currentTask === tasks.length - 1 && (
                 <button
                   onClick={() => setShowFinalReport(true)}
                   className="px-6 py-2.5 bg-gradient-to-r from-primary to-accent text-white rounded-lg hover:from-blue-700 hover:to-blue-600 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
@@ -194,9 +401,12 @@ const DemoSimulation = () => {
             onComplete={handleTaskComplete}
             onNext={handleNext}
             onPrevious={handlePrevious}
-            taskId={tasks[currentTask].id}
+            taskId={tasks[currentTask]?.id}
             canGoNext={currentTask < tasks.length - 1}
             canGoPrevious={currentTask > 0}
+            simulation={simulation}
+            task={simulation?.tasks?.find(t => t.id === tasks[currentTask]?.id)}
+            taskData={simulation?.task_data}
           />
         </div>
       </div>

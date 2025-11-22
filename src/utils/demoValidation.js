@@ -423,6 +423,121 @@ export const calculateFinalScore = (taskScores) => {
   return Math.round(totalScore / totalWeight);
 };
 
+// Persona Simulation Validations
+export const validatePersonaTask1 = (data) => {
+  // Loop 1 - Divergence: Any choice is valid, but track budget
+  const { selectedOption, budgetRemaining } = data;
+  let score = 60; // Base score for making a decision
+  
+  // Bonus for choosing free option (smart budget management)
+  if (selectedOption === 'B' || selectedOption === 'D') {
+    score += 10; // Free options
+  }
+  
+  // Bonus for choosing ad-test (strong signal)
+  if (selectedOption === 'C') {
+    score += 15;
+  }
+  
+  return {
+    score: Math.min(score, 100),
+    breakdown: {
+      decision: score * 0.5,
+      budgetManagement: score * 0.3,
+      signalQuality: score * 0.2
+    },
+    strengths: ['Made a decision under pressure', 'Explored initial signals'],
+    improvements: ['Consider budget implications for future loops']
+  };
+};
+
+export const validatePersonaTask2 = (data) => {
+  // Loop 2 - Convergence: Better choices based on Loop 1
+  const { selectedOption } = data;
+  let score = 65;
+  
+  // Better choices get higher scores
+  if (selectedOption === 'B' || selectedOption === 'C') {
+    score += 20; // Ad-test or landing page (strong signals)
+  } else if (selectedOption === 'A') {
+    score += 10; // Targeted survey (good)
+  }
+  
+  return {
+    score: Math.min(score, 100),
+    breakdown: {
+      strategicThinking: score * 0.4,
+      dataAnalysis: score * 0.3,
+      budgetManagement: score * 0.3
+    },
+    strengths: ['Chose a strategic follow-up method'],
+    improvements: ['Consider which signals complement your first loop']
+  };
+};
+
+export const validatePersonaTask3 = (data) => {
+  // Loop 3 - Persona Decision: Option A (Young Working Women) is best
+  const { selectedOption } = data;
+  let score = 50;
+  
+  if (selectedOption === 'A') {
+    score = 95; // Best choice
+  } else if (selectedOption === 'B') {
+    score = 60; // College women - low purchasing power
+  } else if (selectedOption === 'C') {
+    score = 55; // Parents - weak evidence
+  } else if (selectedOption === 'D') {
+    score = 50; // Sensitive skin - too niche
+  }
+  
+  return {
+    score: Math.min(score, 100),
+    breakdown: {
+      decisionQuality: score * 0.5,
+      stakeholderAlignment: score * 0.3,
+      evidenceBased: score * 0.2
+    },
+    strengths: selectedOption === 'A' 
+      ? ['Excellent persona choice - aligns with market reality and evidence']
+      : ['Made a decisive choice under pressure'],
+    improvements: selectedOption === 'A'
+      ? ['Continue validating this persona']
+      : ['Consider evidence strength and market viability when choosing personas']
+  };
+};
+
+export const validatePersonaTask4 = (data) => {
+  // Loop 4 - Final Validation: Landing page (C) is strongest
+  const { selectedOption, budgetRemaining } = data;
+  let score = 70;
+  
+  if (selectedOption === 'C') {
+    score = 95; // Landing page - strongest conversion signal
+  } else if (selectedOption === 'A') {
+    score = 85; // Ad-test - good behavioral signal
+  } else if (selectedOption === 'B') {
+    score = 75; // Survey - self-reported
+  } else if (selectedOption === 'D') {
+    score = 70; // Interviews - qualitative
+  }
+  
+  // Bonus for budget management
+  if (budgetRemaining >= 5000) {
+    score += 5;
+  }
+  
+  return {
+    score: Math.min(score, 100),
+    breakdown: {
+      validationMethod: score * 0.4,
+      budgetManagement: score * 0.3,
+      signalStrength: score * 0.3
+    },
+    strengths: ['Completed validation experiment', 'Delivered results under pressure'],
+    improvements: ['Consider conversion signals for strongest validation']
+  };
+};
+
 // Calculate skill breakdown
 export const calculateSkillBreakdown = (taskScores) => {
   const skills = {
@@ -457,5 +572,320 @@ export const calculateSkillBreakdown = (taskScores) => {
   });
 
   return skills;
+};
+
+// ============================================================================
+// ARGO MARKETING FOUNDATIONS VALIDATION FUNCTIONS
+// ============================================================================
+
+// Task 1: MCQ - Creative Strategist
+export const validateArgoTask1 = (data) => {
+  const { selectedOption } = data;
+  const correctAnswer = 'opt4'; // "Make saving fun — start today."
+  
+  const isCorrect = selectedOption === correctAnswer;
+  const score = isCorrect ? 100 : 0;
+  
+  return {
+    score,
+    breakdown: {
+      selection: score
+    },
+    strengths: isCorrect ? [
+      'Correctly identified the headline that matches the brand tone (friendly, modern, reassuring)',
+      'Recognized the importance of making saving fun and approachable for Gen Z'
+    ] : [],
+    improvements: isCorrect ? [] : [
+      'Consider the target audience (Gen Z) and brand tone (friendly, modern, reassuring)',
+      'The correct answer emphasizes making saving "fun" which aligns with Gen Z values',
+      'Review the brief: goal is to build trust + get signups with a friendly, modern tone'
+    ],
+    feedback: isCorrect 
+      ? 'Excellent choice! This headline captures the friendly, modern tone while making saving approachable for Gen Z.'
+      : 'Not quite. Consider which headline best matches a friendly, modern, reassuring tone for Gen Z.'
+  };
+};
+
+// Task 2: Short Text - Marketing Analyst
+export const validateArgoTask2 = (data) => {
+  const { response } = data;
+  if (!response) {
+    return {
+      score: 0,
+      breakdown: {},
+      strengths: [],
+      improvements: ['Please provide an answer'],
+      feedback: 'No response provided'
+    };
+  }
+
+  const lowerResponse = response.toLowerCase();
+  let score = 0;
+  const breakdown = {};
+
+  // Check for conversion/low conversion mention (+30%)
+  if (lowerResponse.includes('conversion') || lowerResponse.includes('low conversion')) {
+    score += 30;
+    breakdown.conversion = 30;
+  }
+
+  // Check for churn/high churn mention (+20%)
+  if (lowerResponse.includes('churn') || lowerResponse.includes('high churn')) {
+    score += 20;
+    breakdown.churn = 20;
+  }
+
+  // Check for email/click rate mention (+10%)
+  if (lowerResponse.includes('email') || lowerResponse.includes('click rate')) {
+    score += 10;
+    breakdown.email = 10;
+  }
+
+  // Check length (min 12 words for +10%)
+  const wordCount = response.trim().split(/\s+/).filter(Boolean).length;
+  if (wordCount >= 12) {
+    score += 10;
+    breakdown.length = 10;
+  }
+
+  // Additional keywords (+5% each, max +30%)
+  const additionalKeywords = ['optimize', 'checkout', 'cart', 'mobile', 'drop', 'funnel'];
+  let additionalScore = 0;
+  additionalKeywords.forEach(keyword => {
+    if (lowerResponse.includes(keyword)) {
+      additionalScore += 5;
+    }
+  });
+  additionalScore = Math.min(additionalScore, 30);
+  score += additionalScore;
+  if (additionalScore > 0) {
+    breakdown.keywords = additionalScore;
+  }
+
+  // Cap at 100%
+  score = Math.min(score, 100);
+
+  const strengths = [];
+  const improvements = [];
+
+  if (score >= 70) {
+    strengths.push('Identified key conversion and churn issues');
+    strengths.push('Demonstrated understanding of campaign metrics');
+  } else if (score >= 40) {
+    strengths.push('Recognized some important metrics');
+    improvements.push('Consider investigating conversion rates and churn more deeply');
+  } else {
+    improvements.push('Focus on the most critical problem: low conversion and high churn');
+    improvements.push('Consider how email click rates and traffic relate to conversion');
+  }
+
+  if (!lowerResponse.includes('conversion') && !lowerResponse.includes('churn')) {
+    improvements.push('The most critical issues are low conversion and high churn - these should be prioritized');
+  }
+
+  return {
+    score,
+    breakdown,
+    strengths,
+    improvements,
+    feedback: score >= 70 
+      ? 'Great analysis! You identified the key problems: conversion and churn.'
+      : 'Good start. Consider focusing on conversion rates and churn as the primary concerns.'
+  };
+};
+
+// Task 3: Short Text - Customer Insight
+export const validateArgoTask3 = (data) => {
+  const { response } = data;
+  if (!response) {
+    return {
+      score: 0,
+      breakdown: {},
+      strengths: [],
+      improvements: ['Please provide an answer'],
+      feedback: 'No response provided'
+    };
+  }
+
+  const lowerResponse = response.toLowerCase();
+  let score = 0;
+  const breakdown = {};
+
+  // Check for automation/auto-categorize mention (+30%)
+  if (lowerResponse.includes('auto-categorize') || lowerResponse.includes('automation') || 
+      lowerResponse.includes('automatic') || lowerResponse.includes('auto categorize')) {
+    score += 30;
+    breakdown.automation = 30;
+  }
+
+  // Check for time saving mention (+20%)
+  if (lowerResponse.includes('time') && (lowerResponse.includes('save') || lowerResponse.includes('waste') || 
+      lowerResponse.includes('saving') || lowerResponse.includes('efficient'))) {
+    score += 20;
+    breakdown.timeSaving = 20;
+  }
+
+  // Check for daily/consistent use mention (+10%)
+  if (lowerResponse.includes('daily') || lowerResponse.includes('consistent') || 
+      lowerResponse.includes('regular') || lowerResponse.includes('every day')) {
+    score += 10;
+    breakdown.dailyUse = 10;
+  }
+
+  // Check for effort/ease mention (+10%)
+  if (lowerResponse.includes('effort') || lowerResponse.includes('easy') || 
+      lowerResponse.includes('simple') || lowerResponse.includes('convenient')) {
+    score += 10;
+    breakdown.effort = 10;
+  }
+
+  // Check for receipt/manual mention (+10%)
+  if (lowerResponse.includes('receipt') || lowerResponse.includes('manual')) {
+    score += 10;
+    breakdown.receipt = 10;
+  }
+
+  // Base score for any response (+20%)
+  score += 20;
+  breakdown.base = 20;
+
+  // Cap at 100%
+  score = Math.min(score, 100);
+
+  const strengths = [];
+  const improvements = [];
+
+  if (score >= 70) {
+    strengths.push('Correctly identified automation as the key value');
+    strengths.push('Understood the time-saving benefit');
+  } else if (score >= 40) {
+    strengths.push('Recognized some customer needs');
+    improvements.push('Focus on what the customer explicitly mentioned: auto-categorization');
+  } else {
+    improvements.push('The customer values automation - specifically auto-categorizing receipts');
+    improvements.push('Consider the pain point: manual entry is time-consuming');
+  }
+
+  return {
+    score,
+    breakdown,
+    strengths,
+    improvements,
+    feedback: score >= 70
+      ? 'Excellent insight! You identified that the customer values automation and time-saving.'
+      : 'Good attempt. The customer specifically mentioned auto-categorization as the key value.'
+  };
+};
+
+// Task 4: MCQ - SEO
+export const validateArgoTask4 = (data) => {
+  const { selectedOption } = data;
+  const correctAnswer = 'opt1'; // "budgeting apps for teens"
+  
+  const isCorrect = selectedOption === correctAnswer;
+  const score = isCorrect ? 100 : 0;
+  
+  return {
+    score,
+    breakdown: {
+      selection: score
+    },
+    strengths: isCorrect ? [
+      'Correctly identified the best keyword for the target audience (parents teaching teens)',
+      'Recognized that "budgeting apps for teens" directly matches the search intent'
+    ] : [],
+    improvements: isCorrect ? [] : [
+      'Consider the target audience: parents who want to teach teens money skills',
+      'The keyword should directly match what parents would search for',
+      '"budgeting apps for teens" is the most specific and relevant keyword for this goal'
+    ],
+    feedback: isCorrect
+      ? 'Perfect! This keyword directly targets parents searching for budgeting tools for their teens.'
+      : 'Not quite. Think about what parents would search for when looking to teach teens about money.'
+  };
+};
+
+// Task 5: Reflection
+export const validateArgoTask5 = (data) => {
+  const { response } = data;
+  if (!response) {
+    return {
+      score: 0,
+      breakdown: {},
+      strengths: [],
+      improvements: ['Please provide a reflection'],
+      feedback: 'No response provided'
+    };
+  }
+
+  const lowerResponse = response.toLowerCase();
+  let score = 0;
+  const breakdown = {};
+
+  // Check length (min 30 words for +30%)
+  const wordCount = response.trim().split(/\s+/).filter(Boolean).length;
+  if (wordCount >= 30) {
+    score += 30;
+    breakdown.length = 30;
+  } else if (wordCount >= 20) {
+    score += 20;
+    breakdown.length = 20;
+  } else {
+    score += 10;
+    breakdown.length = 10;
+  }
+
+  // Check for role name mention (+30%)
+  const roleNames = ['creative', 'analyst', 'marketer', 'customer', 'seo', 'strategist', 'coordinator', 'insights'];
+  const hasRoleName = roleNames.some(role => lowerResponse.includes(role));
+  if (hasRoleName) {
+    score += 30;
+    breakdown.roleMention = 30;
+  }
+
+  // Check for clear reason (because, I liked, enjoy, strength) (+20%)
+  const reasonKeywords = ['because', 'i liked', 'i enjoy', 'strength', 'reason', 'why', 'appeal'];
+  const hasReason = reasonKeywords.some(keyword => lowerResponse.includes(keyword));
+  if (hasReason) {
+    score += 20;
+    breakdown.reason = 20;
+  }
+
+  // Check for application mention (+10%)
+  const applicationKeywords = ['apply', 'use', 'practice', 'implement', 'work', 'career'];
+  const hasApplication = applicationKeywords.some(keyword => lowerResponse.includes(keyword));
+  if (hasApplication) {
+    score += 10;
+    breakdown.application = 10;
+  }
+
+  // Cap at 100%
+  score = Math.min(score, 100);
+
+  const strengths = [];
+  const improvements = [];
+
+  if (score >= 70) {
+    strengths.push('Well-structured reflection with clear reasoning');
+    strengths.push('Demonstrated understanding of different marketing roles');
+  } else if (score >= 40) {
+    strengths.push('Good reflection');
+    improvements.push('Consider mentioning which specific role you liked and why');
+    improvements.push('Add more detail about how you might apply these skills');
+  } else {
+    improvements.push('Expand your reflection to 3-4 sentences (30+ words)');
+    improvements.push('Mention which marketing role you found most interesting');
+    improvements.push('Explain why you liked that role and how you might apply the skills');
+  }
+
+  return {
+    score,
+    breakdown,
+    strengths,
+    improvements,
+    feedback: score >= 70
+      ? 'Excellent reflection! You clearly articulated your preferences and reasoning.'
+      : 'Good start. Consider expanding your reflection with more specific details about which role you liked and why.'
+  };
 };
 

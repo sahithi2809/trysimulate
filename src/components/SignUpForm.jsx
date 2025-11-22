@@ -166,6 +166,10 @@ const SignUpForm = ({ onSuccess, onSwitchToSignIn }) => {
             <option value="recruiter">Recruiter</option>
             <option value="other">Other</option>
           </select>
+          <p className="text-xs text-slate-500 mt-1">
+            {formData.userRole === 'recruiter' && 'As a recruiter, you can create simulations and view candidate performance.'}
+            {formData.userRole === 'student' && 'As a student, you can take simulations to showcase your skills.'}
+          </p>
         </div>
 
         {/* How did you hear about us */}

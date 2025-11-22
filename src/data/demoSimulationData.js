@@ -200,3 +200,4 @@ export const skillMapping = {
   task7: { "Communication": 0.6, "Product Sense": 0.4 }
 };
 
+

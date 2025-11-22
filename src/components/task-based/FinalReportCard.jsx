@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { getAllTaskData, getProgress } from '../../utils/demoStorage';
 import { validateTask1, validateTask2, validateTask3, validateTask4, validateTask5, validateTask6, validateTask7, calculateFinalScore, calculateSkillBreakdown } from '../../utils/demoValidation';
+import { validateArgoTask1, validateArgoTask2, validateArgoTask3, validateArgoTask4, validateArgoTask5 } from '../../utils/demoValidation';
 import { companyInfo } from '../../data/demoSimulationData';
+import { taskBasedService } from '../../services/taskBasedService';
 import jsPDF from 'jspdf';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-const FinalReportCard = ({ onClose }) => {
+const FinalReportCard = ({ onClose, simulation, sessionId, simulationId, usingBackend = false }) => {
   const [taskScores, setTaskScores] = useState({});
   const [finalScore, setFinalScore] = useState(0);
   const [skillBreakdown, setSkillBreakdown] = useState({});
@@ -13,58 +15,153 @@ const FinalReportCard = ({ onClose }) => {
   const [improvements, setImprovements] = useState([]);
   const [resumeSnippet, setResumeSnippet] = useState('');
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const allData = getAllTaskData();
-    
-    // Validate all tasks
-    const scores = {
-      task1: validateTask1(allData.task1 || {}),
-      task2: validateTask2(allData.task2 || {}),
-      task3: validateTask3(allData.task3 || {}),
-      task4: validateTask4(allData.task4 || {}),
-      task5: validateTask5(allData.task5 || {}),
-      task6: validateTask6(allData.task6 || {}),
-      task7: validateTask7(allData.task7 || {})
+    const loadReportData = async () => {
+      try {
+        setLoading(true);
+
+        if (usingBackend && simulationId && sessionId) {
+          // Load from backend
+          const progress = await taskBasedService.getProgress(simulationId, sessionId);
+          const submissions = await taskBasedService.getTaskSubmissions(simulationId, sessionId);
+
+          if (progress && submissions) {
+            // Use backend data
+            setFinalScore(progress.final_score || 0);
+            setSkillBreakdown(progress.skill_breakdown || {});
+            setResumeSnippet(progress.resume_snippet || '');
+
+            // Convert submissions to taskScores format
+            const scores = {};
+            submissions.forEach(sub => {
+              scores[sub.task_id] = {
+                score: sub.score || 0,
+                breakdown: sub.score_breakdown || {},
+                strengths: sub.strengths || [],
+                improvements: sub.improvements || []
+              };
+            });
+            setTaskScores(scores);
+
+            // Aggregate strengths and improvements
+            const allStrengths = [];
+            const allImprovements = [];
+            submissions.forEach(sub => {
+              if (sub.strengths) allStrengths.push(...sub.strengths);
+              if (sub.improvements) allImprovements.push(...sub.improvements);
+            });
+            setStrengths([...new Set(allStrengths)].slice(0, 3));
+            setImprovements([...new Set(allImprovements)].slice(0, 3));
+          } else {
+            // Fallback to localStorage
+            loadFromLocalStorage();
+          }
+        } else {
+          // Use localStorage
+          loadFromLocalStorage();
+        }
+      } catch (error) {
+        console.error('Error loading report data:', error);
+        // Fallback to localStorage
+        loadFromLocalStorage();
+      } finally {
+        setLoading(false);
+      }
     };
 
-    setTaskScores(scores);
-    const final = calculateFinalScore(scores);
-    setFinalScore(final);
-    const skills = calculateSkillBreakdown(scores);
-    setSkillBreakdown(skills);
+    const loadFromLocalStorage = () => {
+      const allData = getAllTaskData();
+      
+      // Detect if this is Argo simulation (different validators)
+      const isArgo = simulation?.slug === 'argo-marketing-foundations' || 
+                     simulation?.company_info?.name === 'Argo' ||
+                     simulation?.category === 'Marketing';
+      
+      // Validate all tasks based on simulation type
+      let scores = {};
+      if (isArgo) {
+        // Use Argo validators
+        scores = {
+          task1: validateArgoTask1(allData.task1 || {}),
+          task2: validateArgoTask2(allData.task2 || {}),
+          task3: validateArgoTask3(allData.task3 || {}),
+          task4: validateArgoTask4(allData.task4 || {}),
+          task5: validateArgoTask5(allData.task5 || {})
+        };
+      } else {
+        // Use Noah validators (default)
+        scores = {
+          task1: validateTask1(allData.task1 || {}),
+          task2: validateTask2(allData.task2 || {}),
+          task3: validateTask3(allData.task3 || {}),
+          task4: validateTask4(allData.task4 || {}),
+          task5: validateTask5(allData.task5 || {}),
+          task6: validateTask6(allData.task6 || {}),
+          task7: validateTask7(allData.task7 || {})
+        };
+      }
 
-    // Generate strengths and improvements
-    const allStrengths = [];
-    const allImprovements = [];
-    Object.values(scores).forEach(result => {
-      if (result.strengths) allStrengths.push(...result.strengths);
-      if (result.improvements) allImprovements.push(...result.improvements);
-    });
-    setStrengths([...new Set(allStrengths)].slice(0, 3));
-    setImprovements([...new Set(allImprovements)].slice(0, 3));
+      setTaskScores(scores);
+      const final = calculateFinalScore(scores);
+      setFinalScore(final);
+      const skills = calculateSkillBreakdown(scores);
+      setSkillBreakdown(skills);
 
-    // Generate resume snippet
-    const topSkills = Object.entries(skills)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([skill]) => skill);
-    setResumeSnippet(
-      `Led end-to-end product development for Noah Smart Fitness Watch, demonstrating expertise in ${topSkills.join(', ')}. ` +
-      `Achieved ${final}/100 overall score across market research, team planning, roadmap development, UX design, GTM strategy, and post-launch analytics.`
-    );
-  }, []);
+      // Generate strengths and improvements
+      const allStrengths = [];
+      const allImprovements = [];
+      Object.values(scores).forEach(result => {
+        if (result.strengths) allStrengths.push(...result.strengths);
+        if (result.improvements) allImprovements.push(...result.improvements);
+      });
+      setStrengths([...new Set(allStrengths)].slice(0, 3));
+      setImprovements([...new Set(allImprovements)].slice(0, 3));
+
+      // Generate resume snippet
+      const topSkills = Object.entries(skills)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([skill]) => skill);
+      
+      const companyName = simulation?.company_info?.fullName || simulation?.company_info?.name || 'Noah Healthcare';
+      setResumeSnippet(
+        `Led end-to-end product development for ${companyName} ${simulation?.title || 'Smart Fitness Watch'}, demonstrating expertise in ${topSkills.join(', ')}. ` +
+        `Achieved ${final}/100 overall score across market research, team planning, roadmap development, UX design, GTM strategy, and post-launch analytics.`
+      );
+    };
+
+    loadReportData();
+  }, [usingBackend, simulationId, sessionId, simulation]);
 
   const downloadCertificate = () => {
     const doc = new jsPDF('landscape', 'pt', [1200, 800]);
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
-    // Gradient background (simulated with rectangles) - using primary to accent
-    doc.setFillColor(37, 99, 235); // primary (#2563eb)
-    doc.rect(0, 0, pageWidth, pageHeight, 'F');
-    doc.setFillColor(59, 130, 246); // accent (#3b82f6)
-    doc.rect(0, 0, pageWidth, pageHeight * 0.6, 'F');
+    // Get company info
+    const currentCompanyInfo = simulation?.company_info || companyInfo;
+    const simulationTitle = simulation?.title || 'Smart Fitness Watch Product Management Simulation';
+
+    // Gradient background (simulated with rectangles) - different colors for Argo vs Noah
+    const isArgo = simulation?.slug === 'argo-marketing-foundations' || 
+                   currentCompanyInfo?.name === 'Argo' ||
+                   simulation?.category === 'Marketing';
+    
+    if (isArgo) {
+      // Purple/pink gradient for Argo
+      doc.setFillColor(147, 51, 234); // purple-600 (#9333ea)
+      doc.rect(0, 0, pageWidth, pageHeight, 'F');
+      doc.setFillColor(219, 39, 119); // pink-600 (#db2777)
+      doc.rect(0, 0, pageWidth, pageHeight * 0.6, 'F');
+    } else {
+      // Blue gradient for Noah
+      doc.setFillColor(37, 99, 235); // primary (#2563eb)
+      doc.rect(0, 0, pageWidth, pageHeight, 'F');
+      doc.setFillColor(59, 130, 246); // accent (#3b82f6)
+      doc.rect(0, 0, pageWidth, pageHeight * 0.6, 'F');
+    }
 
     // Decorative border
     doc.setDrawColor(255, 255, 255);
@@ -76,10 +173,17 @@ const FinalReportCard = ({ onClose }) => {
     doc.rect(60, 60, pageWidth - 120, pageHeight - 120, 'F');
 
     // Decorative elements
-    doc.setFillColor(37, 99, 235); // primary
-    doc.circle(pageWidth - 150, 150, 60, 'F');
-    doc.setFillColor(59, 130, 246); // accent
-    doc.circle(150, pageHeight - 150, 60, 'F');
+    if (isArgo) {
+      doc.setFillColor(147, 51, 234); // purple-600
+      doc.circle(pageWidth - 150, 150, 60, 'F');
+      doc.setFillColor(219, 39, 119); // pink-600
+      doc.circle(150, pageHeight - 150, 60, 'F');
+    } else {
+      doc.setFillColor(37, 99, 235); // primary
+      doc.circle(pageWidth - 150, 150, 60, 'F');
+      doc.setFillColor(59, 130, 246); // accent
+      doc.circle(150, pageHeight - 150, 60, 'F');
+    }
 
     // Title
     doc.setTextColor(30, 41, 59);
@@ -90,14 +194,18 @@ const FinalReportCard = ({ onClose }) => {
     // Company
     doc.setFontSize(24);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${companyInfo.fullName}`, pageWidth / 2, 230, { align: 'center' });
+    doc.text(`${currentCompanyInfo.fullName || currentCompanyInfo.name || 'Company'}`, pageWidth / 2, 230, { align: 'center' });
 
     // Simulation name
     doc.setFontSize(20);
-    doc.text('Smart Fitness Watch Product Management Simulation', pageWidth / 2, 270, { align: 'center' });
+    doc.text(simulationTitle, pageWidth / 2, 270, { align: 'center' });
 
     // Score with decorative box
-    doc.setFillColor(59, 130, 246);
+    if (isArgo) {
+      doc.setFillColor(219, 39, 119); // pink-600
+    } else {
+      doc.setFillColor(59, 130, 246); // accent
+    }
     doc.roundedRect(pageWidth / 2 - 150, 320, 300, 100, 10, 10, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(18);
@@ -120,11 +228,16 @@ const FinalReportCard = ({ onClose }) => {
     doc.text('Add this achievement to your resume and LinkedIn profile.', pageWidth / 2, 570, { align: 'center' });
 
     // Decorative line
-    doc.setDrawColor(59, 130, 246);
+    if (isArgo) {
+      doc.setDrawColor(219, 39, 119); // pink-600
+    } else {
+      doc.setDrawColor(59, 130, 246); // accent
+    }
     doc.setLineWidth(2);
     doc.line(pageWidth / 2 - 200, 620, pageWidth / 2 + 200, 620);
 
-    doc.save('noah-simulation-certificate.pdf');
+    const fileName = isArgo ? 'argo-simulation-certificate.pdf' : 'noah-simulation-certificate.pdf';
+    doc.save(fileName);
   };
 
   const copyResumeSnippet = () => {
@@ -174,11 +287,47 @@ const FinalReportCard = ({ onClose }) => {
     return 'Needs Improvement';
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="text-lg text-gray-600">Loading report...</div>
+        </div>
+      </div>
+    );
+  }
+
+  const currentCompanyInfo = simulation?.company_info || companyInfo;
+  const simulationTitle = simulation?.title || 'Smart Fitness Watch Product Management Simulation';
+  
+  // Detect if this is Argo simulation (different branding)
+  const isArgo = simulation?.slug === 'argo-marketing-foundations' || 
+                 currentCompanyInfo?.name === 'Argo' ||
+                 simulation?.category === 'Marketing';
+  
+  // Use purple/pink for Argo, blue for Noah
+  const primaryGradient = isArgo 
+    ? 'from-purple-600 to-pink-600' 
+    : 'from-primary to-accent';
+  const primaryGradientLight = isArgo
+    ? 'from-purple-50 to-pink-50'
+    : 'from-blue-50 to-indigo-50';
+  const primaryBorder = isArgo
+    ? 'border-purple-200'
+    : 'border-blue-200';
+  const primaryBg = isArgo
+    ? 'bg-purple-600'
+    : 'bg-blue-600';
+  const primaryHover = isArgo
+    ? 'hover:from-purple-700 hover:to-pink-700'
+    : 'hover:from-blue-700 hover:to-blue-600';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
+    <div className={`min-h-screen bg-gradient-to-br ${isArgo ? 'from-slate-50 via-purple-50 to-pink-50' : 'from-slate-50 via-blue-50 to-cyan-50'} p-6`}>
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Certificate Section */}
-        <div className="bg-gradient-to-r from-primary to-accent rounded-3xl shadow-2xl p-12 text-center text-white relative overflow-hidden">
+        <div className={`bg-gradient-to-r ${primaryGradient} rounded-3xl shadow-2xl p-12 text-center text-white relative overflow-hidden`}>
           {/* Decorative Elements */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -ml-32 -mb-32"></div>
@@ -186,26 +335,26 @@ const FinalReportCard = ({ onClose }) => {
           <div className="relative z-10">
             <div className="mb-8">
               <div className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-5xl mx-auto mb-6 shadow-lg">
-                {companyInfo.logo}
+                {currentCompanyInfo.logo || '🏢'}
               </div>
               <h1 className="text-5xl md:text-6xl font-extrabold mb-4">Certificate of Completion</h1>
-              <p className="text-2xl text-blue-100 mb-2">{companyInfo.fullName}</p>
-              <p className="text-lg text-blue-200 mb-8">Smart Fitness Watch Product Management Simulation</p>
+              <p className={`text-2xl ${isArgo ? 'text-purple-100' : 'text-blue-100'} mb-2`}>{currentCompanyInfo.fullName || currentCompanyInfo.name || 'Company'}</p>
+              <p className={`text-lg ${isArgo ? 'text-pink-200' : 'text-blue-200'} mb-8`}>{simulationTitle}</p>
               
               <div className="inline-block bg-white/20 backdrop-blur-sm rounded-2xl px-8 py-6 mb-6 border-2 border-white/30">
-                <div className="text-sm text-blue-100 mb-2 uppercase tracking-wide">Final Score</div>
+                <div className={`text-sm ${isArgo ? 'text-purple-100' : 'text-blue-100'} mb-2 uppercase tracking-wide`}>Final Score</div>
                 <div className={`text-6xl font-bold bg-gradient-to-r ${getScoreColor(finalScore)} bg-clip-text text-transparent`}>
                   {finalScore}
                 </div>
-                <div className="text-2xl text-blue-100 mt-2">/ 100</div>
+                <div className={`text-2xl ${isArgo ? 'text-purple-100' : 'text-blue-100'} mt-2`}>/ 100</div>
                 <div className="text-lg font-semibold text-white mt-3">{getScoreLabel(finalScore)}</div>
               </div>
               
-              <p className="text-sm text-blue-100">Completed on {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              <p className={`text-sm ${isArgo ? 'text-purple-100' : 'text-blue-100'}`}>Completed on {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
             <button
               onClick={downloadCertificate}
-              className="px-8 py-4 bg-white text-primary rounded-xl hover:bg-blue-50 font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all flex items-center gap-3 mx-auto"
+              className={`px-8 py-4 bg-white ${isArgo ? 'text-purple-600 hover:bg-purple-50' : 'text-primary hover:bg-blue-50'} rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all flex items-center gap-3 mx-auto`}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -231,7 +380,7 @@ const FinalReportCard = ({ onClose }) => {
           </div>
 
           {/* Overall Score Summary */}
-          <div className="mb-10 p-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200">
+          <div className={`mb-10 p-8 bg-gradient-to-r ${primaryGradientLight} rounded-2xl border-2 ${primaryBorder}`}>
             <div className="grid md:grid-cols-3 gap-6">
               <div className="text-center">
                 <div className="text-sm text-gray-600 mb-2 uppercase tracking-wide font-semibold">Overall Score</div>
@@ -248,7 +397,7 @@ const FinalReportCard = ({ onClose }) => {
               <div className="text-center">
                 <div className="text-sm text-gray-600 mb-2 uppercase tracking-wide font-semibold">Tasks Completed</div>
                 <div className="text-3xl font-bold text-gray-900">{Object.keys(taskScores).length}</div>
-                <div className="text-sm text-gray-500 mt-2">out of 7 tasks</div>
+                <div className="text-sm text-gray-500 mt-2">out of {Object.keys(taskScores).length} tasks</div>
               </div>
             </div>
           </div>
@@ -341,7 +490,7 @@ const FinalReportCard = ({ onClose }) => {
             
             <div className="grid md:grid-cols-2 gap-6 mb-6">
               {/* Pie Chart */}
-              <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
+              <div className={`p-6 bg-gradient-to-br ${primaryGradientLight} rounded-xl border-2 ${primaryBorder}`}>
                 <h4 className="text-lg font-bold text-gray-900 mb-4 text-center">Skill Distribution</h4>
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
@@ -445,7 +594,7 @@ const FinalReportCard = ({ onClose }) => {
               className={`px-6 py-3 rounded-xl font-bold text-base shadow-lg hover:shadow-xl transition-all flex items-center gap-2 ${
                 copied
                   ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white'
-                  : 'bg-gradient-to-r from-primary to-accent text-white hover:from-blue-700 hover:to-blue-600'
+                  : `bg-gradient-to-r ${primaryGradient} text-white ${primaryHover}`
               }`}
             >
               {copied ? (
@@ -480,7 +629,7 @@ const FinalReportCard = ({ onClose }) => {
           </button>
           <button
             onClick={() => window.location.href = '/browse'}
-            className="px-8 py-4 bg-gradient-to-r from-primary to-accent text-white rounded-xl hover:from-blue-700 hover:to-blue-600 font-bold text-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+            className={`px-8 py-4 bg-gradient-to-r ${primaryGradient} text-white rounded-xl ${primaryHover} font-bold text-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2`}
           >
             Browse More Simulations
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

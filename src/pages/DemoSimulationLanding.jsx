@@ -1,21 +1,72 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { companyInfo } from '../data/demoSimulationData';
+import { taskBasedService } from '../services/taskBasedService';
 
 const DemoSimulationLanding = () => {
+  const { slug } = useParams();
   const navigate = useNavigate();
+  const [simulation, setSimulation] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadSimulation = async () => {
+      try {
+        setLoading(true);
+        const simulationSlug = slug || 'noah-smart-fitness-watch';
+        
+        try {
+          const sim = await taskBasedService.getSimulationBySlug(simulationSlug);
+          if (sim) {
+            setSimulation(sim);
+          }
+        } catch (error) {
+          console.warn('Could not load simulation from database:', error);
+          // Continue with default companyInfo
+        }
+      } catch (error) {
+        console.error('Error loading simulation:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSimulation();
+  }, [slug]);
 
   const handleStartSimulation = () => {
-    navigate('/demosimulation/start');
+    const simulationSlug = slug || 'noah-smart-fitness-watch';
+    if (simulationSlug) {
+      navigate(`/simulation/${simulationSlug}/start`);
+    } else {
+      navigate('/demosimulation/start');
+    }
   };
+
+  const currentCompanyInfo = simulation?.company_info || companyInfo;
+  const simulationTitle = simulation?.title || 'Noah Smart Fitness Watch - Product Management';
+  const simulationDescription = simulation?.description || 'End-to-end product management simulation...';
+  
+  // Detect if this is Argo simulation (different branding)
+  const isArgo = simulation?.slug === 'argo-marketing-foundations' || 
+                 currentCompanyInfo?.name === 'Argo' ||
+                 simulation?.category === 'Marketing';
+  
+  // Use purple/pink for Argo, blue for Noah
+  const primaryGradient = isArgo 
+    ? 'from-purple-600 to-pink-600' 
+    : 'from-primary to-accent';
+  const primaryGradientLight = isArgo
+    ? 'from-purple-50 to-pink-50'
+    : 'from-blue-50 to-indigo-50';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
       <Navbar />
 
       {/* Hero Section with Gradient Background */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-primary to-accent text-white">
+      <div className={`relative overflow-hidden bg-gradient-to-r ${primaryGradient} text-white`}>
         {/* Decorative Elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
@@ -27,29 +78,30 @@ const DemoSimulationLanding = () => {
             {/* Left Side - Content */}
             <div className="space-y-6">
               <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold mb-4">
-                <span className="text-2xl">{companyInfo.logo}</span>
-                <span>{companyInfo.name.toUpperCase()}</span>
+                <span className="text-2xl">{currentCompanyInfo.logo || '🏢'}</span>
+                <span>{(currentCompanyInfo.name || companyInfo.name).toUpperCase()}</span>
               </div>
               
               <h1 className="text-5xl md:text-6xl font-extrabold leading-tight">
-                Smart Fitness Watch
-                <span className="block text-4xl md:text-5xl mt-2 text-blue-200">Product Management</span>
+                {isArgo ? 'Marketing Foundations' : 'Smart Fitness Watch'}
+                <span className={`block text-4xl md:text-5xl mt-2 ${isArgo ? 'text-pink-200' : 'text-blue-200'}`}>
+                  {isArgo ? 'Marketing Simulation' : 'Product Management'}
+                </span>
               </h1>
               
-              <p className="text-xl md:text-2xl text-blue-100 leading-relaxed font-light">
-                Lead end-to-end product development: from market research to post-launch analytics. 
-                Practice real PM skills with <span className="font-semibold text-white">7 comprehensive tasks</span>.
+              <p className={`text-xl md:text-2xl ${isArgo ? 'text-purple-100' : 'text-blue-100'} leading-relaxed font-light`}>
+                {simulationDescription}
               </p>
               
               <div className="flex flex-wrap gap-3">
                 <span className="bg-white/20 backdrop-blur-sm text-white px-5 py-2.5 rounded-full text-sm font-semibold border border-white/30">
-                  📦 Product Management
+                  {isArgo ? '📊 Marketing' : '📦 Product Management'}
                 </span>
                 <span className="bg-green-500 text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-lg">
                   ✓ Free
                 </span>
                 <span className="bg-white/20 backdrop-blur-sm text-white px-5 py-2.5 rounded-full text-sm font-semibold border border-white/30">
-                  ⏱️ 6-8 hours
+                  ⏱️ {simulation?.estimated_duration || (isArgo ? '50-60 min' : '6-8 hours')}
                 </span>
               </div>
             </div>
@@ -59,9 +111,9 @@ const DemoSimulationLanding = () => {
               <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-full inline-block mb-6 shadow-lg">
                 ✨ AVAILABLE NOW
               </div>
-              <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Get Career Ready
-              </h3>
+                <h3 className={`text-3xl font-bold mb-6 bg-gradient-to-r ${primaryGradient} bg-clip-text text-transparent`}>
+                  {simulationTitle}
+                </h3>
               <ul className="space-y-4 mb-8">
                 <li className="flex items-start gap-4">
                   <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
@@ -90,7 +142,7 @@ const DemoSimulationLanding = () => {
               </ul>
               <button
                 onClick={handleStartSimulation}
-                className="w-full bg-gradient-to-r from-primary to-accent text-white py-4 px-6 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-blue-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                className={`w-full bg-gradient-to-r ${primaryGradient} text-white py-4 px-6 rounded-xl font-bold text-lg ${isArgo ? 'hover:from-purple-700 hover:to-pink-700' : 'hover:from-blue-700 hover:to-blue-600'} transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105`}
               >
                 Try Simulation →
               </button>
@@ -124,7 +176,7 @@ const DemoSimulationLanding = () => {
             {/* Why Complete Section */}
             <section id="overview" className="bg-white rounded-2xl shadow-lg p-10 border border-gray-100">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center">
+                    <div className={`w-12 h-12 bg-gradient-to-br ${primaryGradient} rounded-xl flex items-center justify-center`}>
                   <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
@@ -152,17 +204,13 @@ const DemoSimulationLanding = () => {
               
               <div className="space-y-4">
                 <h3 className="text-2xl font-bold text-gray-900">
-                  Welcome to the {companyInfo.name} Smart Fitness Watch Product Management Simulation!
+                  Welcome to the {simulationTitle}!
                 </h3>
                 <p className="text-lg text-gray-700 leading-relaxed">
-                  We are thrilled to have you here. This simulation will take you through the complete 
-                  product development lifecycle for a healthcare smartwatch, from initial market research 
-                  to post-launch optimization.
+                  {simulationDescription || 'We are thrilled to have you here. This simulation will take you through the complete product development lifecycle.'}
                 </p>
                 <p className="text-lg text-gray-700 leading-relaxed">
-                  <strong className="text-gray-900">{companyInfo.fullName}</strong> is a mid-size healthcare products company, known for OTC medicines. 
-                  Now we're building a consumer Health & Fitness Smartwatch, and you'll lead the product 
-                  management for this exciting new venture.
+                  <strong className="text-gray-900">{currentCompanyInfo.fullName || currentCompanyInfo.name}</strong> {currentCompanyInfo.description || 'is a company building innovative products, and you\'ll lead the product management for this exciting new venture.'}
                 </p>
                 <a href="#tasks" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold text-lg group">
                   View All Tasks
@@ -219,7 +267,7 @@ const DemoSimulationLanding = () => {
                 
                 <div className="flex gap-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl hover:shadow-md transition-shadow">
                   <div className="flex-shrink-0">
-                    <div className="w-16 h-16 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center shadow-lg">
+                    <div className={`w-16 h-16 bg-gradient-to-br ${primaryGradient} rounded-2xl flex items-center justify-center shadow-lg`}>
                       <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
                       </svg>
@@ -324,7 +372,7 @@ const DemoSimulationLanding = () => {
               {/* Skills Section */}
               <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 shadow-lg">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
+                  <div className={`w-10 h-10 bg-gradient-to-br ${primaryGradient} rounded-lg flex items-center justify-center`}>
                     <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
                       <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
@@ -352,7 +400,7 @@ const DemoSimulationLanding = () => {
       </div>
 
       {/* Bottom CTA Section */}
-      <div className="bg-gradient-to-r from-primary to-accent text-white py-16 mt-16">
+      <div className={`bg-gradient-to-r ${primaryGradient} text-white py-16 mt-16`}>
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="flex-1">

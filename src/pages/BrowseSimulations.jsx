@@ -17,32 +17,46 @@ const BrowseSimulations = () => {
         
         console.log('🔍 Loading simulations from database...');
         
-        // Load all published simulations from database
+        // Load all published simulations from database (HTML-based)
         const dbSimulations = await databaseService.getAllSimulations();
-        console.log('✅ Loaded simulations from database:', dbSimulations.length);
+        console.log('✅ Loaded HTML simulations from database:', dbSimulations.length);
         
-        // Add Noah simulation (task-based demo)
-        const noahSimulation = {
-          id: 'noah-demo',
-          title: 'Noah Smart Fitness Watch - Product Management',
-          description: 'End-to-end product management simulation: from market research to post-launch analytics. Practice real PM skills with 7 comprehensive tasks.',
-          category: 'Product Management',
-          difficulty: 'Intermediate',
-          duration: '6-8 hours',
+        // Load task-based simulations from database
+        const { taskBasedService } = await import('../services/taskBasedService');
+        let taskBasedSims = [];
+        try {
+          taskBasedSims = await taskBasedService.getAllSimulations();
+          console.log('✅ Loaded task-based simulations from database:', taskBasedSims.length);
+        } catch (taskError) {
+          console.warn('Could not load task-based simulations:', taskError);
+        }
+        
+        // Transform task-based simulations to match format
+        const transformedTaskSims = taskBasedSims.map(sim => ({
+          id: sim.id,
+          slug: sim.slug,
+          title: sim.title,
+          description: sim.description,
+          category: sim.category,
+          difficulty: sim.difficulty,
+          duration: sim.estimated_duration,
           is_ai_generated: false,
           isDefault: false,
-          isTaskBased: true // Flag to identify task-based simulation
-        };
+          isTaskBased: true,
+          // Add fallback for backward compatibility
+          ...(sim.slug === 'noah-smart-fitness-watch' && { id: 'noah-demo' })
+        }));
         
-        // Combine Noah simulation with database results (Noah first)
-        setSimulations([noahSimulation, ...dbSimulations]);
+        // Combine all simulations (task-based first, then HTML-based)
+        setSimulations([...transformedTaskSims, ...dbSimulations]);
         
       } catch (err) {
         console.error('❌ Error loading from database:', err);
         setError('Failed to load simulations. Please refresh the page.');
-        // Still show Noah simulation even if DB fails
+        // Still show Noah simulation even if DB fails (fallback)
         const noahSimulation = {
           id: 'noah-demo',
+          slug: 'noah-smart-fitness-watch',
           title: 'Noah Smart Fitness Watch - Product Management',
           description: 'End-to-end product management simulation: from market research to post-launch analytics. Practice real PM skills with 7 comprehensive tasks.',
           category: 'Product Management',
@@ -86,9 +100,12 @@ const BrowseSimulations = () => {
   };
 
   const getSimulationPath = (sim) => {
-    // Task-based simulation (Noah demo) - goes to landing page
+    // Task-based simulation - use slug if available, otherwise fallback
     if (sim.isTaskBased || sim.id === 'noah-demo') {
-      return '/demosimulation';
+      if (sim.slug) {
+        return `/simulation/${sim.slug}`;
+      }
+      return '/demosimulation'; // Fallback for backward compatibility
     }
     // All database simulations are HTML-based AI-generated
     if (sim.is_ai_generated || sim.html_content) {

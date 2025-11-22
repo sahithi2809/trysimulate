@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { saveTaskData, getTaskData, markTaskComplete } from '../../utils/demoStorage';
 import { validateTask4 } from '../../utils/demoValidation';
+import WhiteboardCanvas from './WhiteboardCanvas';
 
-const Task4Wireframe = ({ onNext, onPrevious, onComplete, taskId, canGoNext, canGoPrevious }) => {
+const Task4Wireframe = ({ onNext, onPrevious, onComplete, taskId, canGoNext, canGoPrevious, simulation, taskData }) => {
+  const [inputMethod, setInputMethod] = useState('draw'); // 'draw' or 'upload'
   const [fileUploaded, setFileUploaded] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [drawingData, setDrawingData] = useState(null);
   const [explanation, setExplanation] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
@@ -11,32 +15,60 @@ const Task4Wireframe = ({ onNext, onPrevious, onComplete, taskId, canGoNext, can
   useEffect(() => {
     const saved = getTaskData(taskId);
     if (saved) {
+      setInputMethod(saved.inputMethod || 'draw');
       setFileUploaded(saved.fileUploaded || false);
+      setUploadedFile(saved.uploadedFile || null);
+      setDrawingData(saved.drawingData || null);
       setExplanation(saved.explanation || '');
       setSubmitted(saved.submitted || false);
     }
   }, [taskId]);
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      setFileUploaded(true);
-      setTimeout(() => {
-        alert('Wireframe uploaded successfully!');
-      }, 100);
+      // Convert file to base64 for storage
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result;
+        setUploadedFile(base64String);
+        setFileUploaded(true);
+        setDrawingData(null); // Clear drawing if file uploaded
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDrawingChange = (drawing) => {
+    setDrawingData(drawing);
+    if (drawing) {
+      setFileUploaded(false); // Clear file upload if drawing exists
+      setUploadedFile(null);
     }
   };
 
   const handleSubmit = () => {
-    const data = { fileUploaded, explanation };
+    // Validate that user has either drawing or file
+    if (!drawingData && !fileUploaded) {
+      alert('Please either draw a wireframe or upload a file before submitting.');
+      return;
+    }
+
+    const data = {
+      inputMethod,
+      fileUploaded,
+      uploadedFile,
+      drawingData,
+      explanation,
+      hasWireframe: !!(drawingData || fileUploaded)
+    };
+    
     saveTaskData(taskId, { ...data, submitted: true });
     const result = validateTask4(data);
     setValidationResult(result);
     setSubmitted(true);
     markTaskComplete(taskId);
     onComplete(taskId);
-    
-    alert('Task 4 completed successfully!');
   };
 
   return (
@@ -66,23 +98,86 @@ const Task4Wireframe = ({ onNext, onPrevious, onComplete, taskId, canGoNext, can
           </ul>
         </div>
 
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-900 mb-2">
-            Upload Wireframe/Sketch (PNG, JPG, or PDF)
+        {/* Input Method Selection */}
+        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
+          <label className="block text-base font-bold text-gray-900 mb-4">
+            Choose Input Method
           </label>
-          <input
-            type="file"
-            accept=".png,.jpg,.jpeg,.pdf"
-            onChange={handleFileUpload}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-          />
-          {fileUploaded && (
-            <p className="mt-2 text-sm text-green-600">✓ File uploaded successfully</p>
-          )}
-          <p className="mt-2 text-xs text-gray-500">
-            You can sketch on paper and take a photo, use a design tool, or create a simple wireframe.
-          </p>
+          <div className="flex gap-4">
+            <button
+              onClick={() => setInputMethod('draw')}
+              className={`flex-1 px-6 py-4 rounded-xl font-semibold transition-all ${
+                inputMethod === 'draw'
+                  ? 'bg-gradient-to-r from-primary to-accent text-white shadow-lg transform scale-105'
+                  : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-blue-400'
+              }`}
+            >
+              🎨 Draw on Whiteboard
+            </button>
+            <button
+              onClick={() => setInputMethod('upload')}
+              className={`flex-1 px-6 py-4 rounded-xl font-semibold transition-all ${
+                inputMethod === 'upload'
+                  ? 'bg-gradient-to-r from-primary to-accent text-white shadow-lg transform scale-105'
+                  : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-blue-400'
+              }`}
+            >
+              📁 Upload File
+            </button>
+          </div>
         </div>
+
+        {/* Whiteboard Drawing */}
+        {inputMethod === 'draw' && (
+          <div className="mb-6">
+            <label className="block text-base font-bold text-gray-900 mb-4">
+              Draw Your Wireframe
+            </label>
+            <div className="p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border-2 border-gray-200">
+              <WhiteboardCanvas
+                onDrawingChange={handleDrawingChange}
+                initialDrawing={drawingData}
+              />
+            </div>
+            {drawingData && (
+              <p className="mt-2 text-sm text-green-600 font-medium">
+                ✓ Drawing saved automatically
+              </p>
+            )}
+            <p className="mt-2 text-xs text-gray-500">
+              Draw your wireframe directly on the canvas above. Your drawing is saved automatically.
+            </p>
+          </div>
+        )}
+
+        {/* File Upload */}
+        {inputMethod === 'upload' && (
+          <div className="mb-6">
+            <label className="block text-base font-bold text-gray-900 mb-2">
+              Upload Wireframe/Sketch (PNG, JPG, or PDF)
+            </label>
+            <input
+              type="file"
+              accept=".png,.jpg,.jpeg,.pdf"
+              onChange={handleFileUpload}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-primary file:to-accent file:text-white hover:file:opacity-90 transition-all"
+            />
+            {fileUploaded && uploadedFile && (
+              <div className="mt-4 p-4 bg-green-50 border-2 border-green-200 rounded-xl">
+                <p className="text-sm text-green-700 font-semibold mb-2">✓ File uploaded successfully</p>
+                <img 
+                  src={uploadedFile} 
+                  alt="Uploaded wireframe" 
+                  className="max-w-full h-auto rounded-lg border-2 border-gray-200"
+                  style={{ maxHeight: '300px' }}
+                />
+              </div>
+            )}
+            <p className="mt-2 text-xs text-gray-500">
+              You can sketch on paper and take a photo, use a design tool, or create a simple wireframe.
+            </p>
+          </div>
+        )}
 
         <div className="mb-6">
           <label className="block text-sm font-semibold text-gray-900 mb-2">

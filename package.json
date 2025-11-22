@@ -12,6 +12,7 @@
     "react-dom": "^18.2.0",
     "react-quill": "^2.0.0",
     "react-router-dom": "^6.20.0",
+    "react-sketch-canvas": "^6.2.0",
     "react-sortablejs": "^6.1.4",
     "recharts": "^3.4.1",
     "sortablejs": "^1.15.0"
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
+    "dotenv": "^17.2.3",
     "gh-pages": "^6.3.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
@@ -31,6 +33,15 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
     "import:simulations": "node ./scripts/importSimulations.js",
-    "deactivate:simulations": "node ./scripts/deactivateSimulations.js"
+    "deactivate:simulations": "node ./scripts/deactivateSimulations.js",
+    "seed:task-based": "node ./scripts/seed-task-based-simulations.js",
+    "seed:argo": "node ./scripts/seed-argo-simulation.js",
+    "seed:persona": "node ./scripts/seed-persona-simulation.js",
+    "map:simulations": "node ./scripts/map-simulations-to-recruiter.js",
+    "verify:ownership": "node ./scripts/verify-simulation-ownership.js",
+    "fix:completed": "node ./scripts/fix-completed-progress.js",
+    "check:dev": "node ./scripts/check-dev-user-progress.js",
+    "create:progress": "node ./scripts/create-progress-from-submissions.js",
+    "check:completed": "node ./scripts/check-completed-simulations.js"
   }
 }
