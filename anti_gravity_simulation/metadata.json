@@ -1,0 +1,5 @@
+{
+  "name": "PM Sim - The Product Manager Workspace",
+  "description": "A realistic Slack-like workspace simulation for Product Managers. Experience the thrill of managing stakeholders, handling incoming requests from engineering and design, and keeping the product on track, powered by Gemini AI personas.",
+  "requestFramePermissions": []
+}

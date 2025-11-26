@@ -19,11 +19,17 @@ import CompleteProfile from './pages/CompleteProfile';
 import DemoSimulation from './pages/DemoSimulation';
 import DemoSimulationLanding from './pages/DemoSimulationLanding';
 import SimulationDetails from './pages/SimulationDetails';
+import SlackSimulationLanding from './pages/SlackSimulationLanding';
+import SlackSimulation from './pages/SlackSimulation';
 
 function App() {
+  // Get base path from Vite's base config or default to '/'
+  // In production on GitHub Pages, this will be '/trysimulate'
+  const basename = import.meta.env.BASE_URL || '/';
+  
   return (
     <AuthProvider>
-      <Router>
+      <Router basename={basename}>
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
           <Routes>
             <Route path="/auth" element={<><Navbar /><AuthPage /></>} />
@@ -44,6 +50,8 @@ function App() {
             <Route path="/simulation/:slug" element={<DemoSimulationLanding />} />
             <Route path="/simulation/:slug/start" element={<DemoSimulation />} />
             <Route path="/creator/simulation/:id" element={<><Navbar /><SimulationDetails /></>} />
+            <Route path="/slack_simulation" element={<SlackSimulationLanding />} />
+            <Route path="/slack_simulation/start" element={<SlackSimulation />} />
           </Routes>
         </div>
       </Router>

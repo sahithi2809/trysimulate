@@ -47,8 +47,23 @@ const BrowseSimulations = () => {
           ...(sim.slug === 'noah-smart-fitness-watch' && { id: 'noah-demo' })
         }));
         
-        // Combine all simulations (task-based first, then HTML-based)
-        setSimulations([...transformedTaskSims, ...dbSimulations]);
+        // Add Slack Simulation (static)
+        const slackSimulation = {
+          id: 'slack-simulation',
+          slug: 'slack-simulation',
+          title: 'Slack Simulation',
+          description: 'Experience a realistic Slack workspace where you play a Product Manager navigating workplace conflicts, stakeholder disagreements, and high-pressure decision-making scenarios. Test your conflict management and decision-making skills.',
+          category: 'Leadership',
+          difficulty: 'Intermediate',
+          duration: '30-45 min',
+          is_ai_generated: false,
+          isDefault: false,
+          isTaskBased: false,
+          isSlackSimulation: true
+        };
+        
+        // Combine all simulations (task-based first, then Slack, then HTML-based)
+        setSimulations([...transformedTaskSims, slackSimulation, ...dbSimulations]);
         
       } catch (err) {
         console.error('❌ Error loading from database:', err);
@@ -100,6 +115,10 @@ const BrowseSimulations = () => {
   };
 
   const getSimulationPath = (sim) => {
+    // Slack Simulation
+    if (sim.isSlackSimulation || sim.id === 'slack-simulation') {
+      return '/slack_simulation';
+    }
     // Task-based simulation - use slug if available, otherwise fallback
     if (sim.isTaskBased || sim.id === 'noah-demo') {
       if (sim.slug) {
@@ -116,6 +135,10 @@ const BrowseSimulations = () => {
   };
 
   const getTypeIcon = (sim) => {
+    // Slack Simulation
+    if (sim.isSlackSimulation || sim.id === 'slack-simulation') {
+      return '💬';
+    }
     // Task-based simulation (Noah)
     if (sim.isTaskBased || sim.id === 'noah-demo') {
       return '🏥';

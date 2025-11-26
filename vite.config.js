@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/', // Root domain hosting
+  base: '/trysimulate/', // GitHub Pages base path
   server: {
     port: 3000
   }
